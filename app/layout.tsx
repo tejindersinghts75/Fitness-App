@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Three Fitness App Concepts",
-  description: "Three mobile directions for fitness subscriptions and coaching.",
+  title: "Fitora Admin",
+  description: "Manage Fitora fitness packages, pricing, and Mux video libraries.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
