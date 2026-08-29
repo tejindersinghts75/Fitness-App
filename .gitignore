@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnpm-store/
 /.pnp
 .pnp.*
@@ -15,8 +15,8 @@
 /coverage
 
 # next.js
-/.next/
-/.vinext/
+**/.next/
+**/.vinext/
 /out/
 
 # misc
@@ -30,12 +30,31 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+.env
+.env.local
+.env.*.local
+!.env.example
 
 # vercel
 .vercel
 
-/dist/
+**/dist/
 /.wrangler/
 /outputs/
 /work/
+
+# native build output
+mobile-app/ios/Pods/
+mobile-app/ios/build/
+mobile-app/android/.gradle/
+mobile-app/android/app/build/
+mobile-app/android/build/
+
+# obsolete local preview artifacts (not part of either application)
+/.vite/
+/index.html
+/next-env.d.ts
+/src/
+/vercel-dist/
+/vercel.json
+/vite.vercel.config.ts

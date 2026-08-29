@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Fitora",
+    "slug": "fitora-mobile",
+    "scheme": "fitora",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.fitora-mobile"
+    },
+    "android": {
+      "package": "com.anonymous.fitoramobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#F36B21"
+      }
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      "expo-video"
+    ],
+    "extra": {
+      "eas": {}
+    }
+  }
+}
