@@ -1,69 +1,766 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useMemo, useState } from 'react';
-import { Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppButton, AppHeader, EmptyState, GlassCard, LoadingState, PlanCard, SectionHeader, StatusBadge } from '../components/ui';
-import { useAuth } from '../context/AuthContext';
-import { useCatalog } from '../context/CatalogContext';
-import { useAppTheme } from '../context/ThemeContext';
-import { RootStackParamList } from '../types';
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import React, { useMemo, useState } from "react";
+import {
+  Image,
+  ImageBackground,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  AppButton,
+  AppHeader,
+  EmptyState,
+  GlassCard,
+  LoadingState,
+  PlanCard,
+  SectionHeader,
+  StatusBadge,
+} from "../components/ui";
+import { useAuth } from "../context/AuthContext";
+import { useCatalog } from "../context/CatalogContext";
+import { useAppTheme } from "../context/ThemeContext";
+import { RootStackParamList } from "../types";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-const trainerImage = require('../../assets/fitness-hero.png');
-const coachMale = require('../../assets/coach-kal-transparent-v2.png');
-const coachFemale = require('../../assets/coach-female-transparent-v2.png');
-const Shell = ({ children }: React.PropsWithChildren) => { const { theme } = useAppTheme(); return <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: theme.background }}><ScrollView contentContainerStyle={s.page} showsVerticalScrollIndicator={false}>{children}</ScrollView></SafeAreaView>; };
+const trainerImage = require("../../assets/fitness-hero.png");
+const coachMale = require("../../assets/coach-kal-transparent-v2.png");
+const coachFemale = require("../../assets/coach-female-transparent-v2.png");
+const Shell = ({ children }: React.PropsWithChildren) => {
+  const { theme } = useAppTheme();
+  const { loading, refresh } = useCatalog();
+  return (
+    <SafeAreaView
+      edges={["top"]}
+      style={{ flex: 1, backgroundColor: theme.background }}
+    >
+      <ScrollView
+        contentContainerStyle={s.page}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={() => refresh().catch(() => undefined)}
+            tintColor={theme.accent}
+            colors={[theme.accent]}
+          />
+        }
+      >
+        {children}
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
 
 export const HomeScreen = () => {
-  const { theme } = useAppTheme(); const { profile, user } = useAuth(); const nav = useNavigation<Nav>(); const { width } = useWindowDimensions();
-  const { videos, loading } = useCatalog(); const featured = videos[0];
-  const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
+  const { theme } = useAppTheme();
+  const { profile, user } = useAuth();
+  const nav = useNavigation<Nav>();
+  const { width } = useWindowDimensions();
+  const { videos, loading } = useCatalog();
+  const featured = videos[0];
+  const displayName =
+    profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0] ||
+    "there";
   const firstName = displayName.trim().split(/\s+/)[0];
-  return <Shell>
-    <View style={s.welcome}><View style={s.welcomeUser}><Image source={trainerImage} style={s.userPhoto}/><View><Text style={{ color: theme.muted, fontSize: 13 }}>Welcome back</Text><Text style={[s.welcomeName, { color: theme.text }]}>{firstName}</Text></View></View><Pressable style={[s.iconButton, { backgroundColor: theme.surfaceAlt }]}><Ionicons name="notifications-outline" size={21} color={theme.text}/><View style={[s.notificationDot, { backgroundColor: theme.accent }]}/></Pressable></View>
+  return (
+    <Shell>
+      <View style={s.welcome}>
+        <View style={s.welcomeUser}>
+          <Image source={trainerImage} style={s.userPhoto} />
+          <View>
+            <Text style={{ color: theme.muted, fontSize: 13 }}>
+              Welcome back
+            </Text>
+            <Text style={[s.welcomeName, { color: theme.text }]}>
+              {firstName}
+            </Text>
+          </View>
+        </View>
+        <Pressable
+          style={[s.iconButton, { backgroundColor: theme.surfaceAlt }]}
+        >
+          <Ionicons name="notifications-outline" size={21} color={theme.text} />
+          <View
+            style={[s.notificationDot, { backgroundColor: theme.accent }]}
+          />
+        </Pressable>
+      </View>
 
-    {featured ? <ImageBackground source={{ uri: featured.thumbnailUrl }} imageStyle={s.homeHeroImage} style={s.homeHero}><View style={s.homeHeroShade}/><View style={s.homeHeroBadge}><Ionicons name="flash" size={12} color="#fff"/><Text style={s.homeHeroBadgeText}>{featured.category.toUpperCase()}</Text></View><View style={s.homeHeroCopy}><Text style={s.homeHeroTitle}>{featured.title}</Text><Text style={s.homeHeroSubtitle}>{featured.description || `Train with ${featured.trainer}.`}</Text><Pressable onPress={() => nav.navigate('VideoDetails', { videoId: featured.id })} style={[s.homeHeroButton, { backgroundColor: theme.accent }]}><Text style={s.homeHeroButtonText}>Start workout</Text><Ionicons name="play" size={14} color="#fff"/></Pressable></View></ImageBackground> : loading ? <LoadingState/> : <EmptyState title="Subscribe to a course to unlock workouts"/>}
+      {featured ? (
+        <ImageBackground
+          source={{ uri: featured.thumbnailUrl }}
+          imageStyle={s.homeHeroImage}
+          style={s.homeHero}
+        >
+          <View style={s.homeHeroShade} />
+          <View style={s.homeHeroBadge}>
+            <Ionicons name="flash" size={12} color="#fff" />
+            <Text style={s.homeHeroBadgeText}>
+              {featured.category.toUpperCase()}
+            </Text>
+          </View>
+          <View style={s.homeHeroCopy}>
+            <Text style={s.homeHeroTitle}>{featured.title}</Text>
+            <Text style={s.homeHeroSubtitle}>
+              {featured.description || `Train with ${featured.trainer}.`}
+            </Text>
+            <Pressable
+              onPress={() =>
+                nav.navigate("VideoDetails", { videoId: featured.id })
+              }
+              style={[s.homeHeroButton, { backgroundColor: theme.accent }]}
+            >
+              <Text style={s.homeHeroButtonText}>Start workout</Text>
+              <Ionicons name="play" size={14} color="#fff" />
+            </Pressable>
+          </View>
+        </ImageBackground>
+      ) : loading ? (
+        <LoadingState />
+      ) : (
+        <EmptyState title="Subscribe to a course to unlock workouts" />
+      )}
 
-    <SectionHeader title="Your trainers" action="See all"/>
-    <ScrollView horizontal pagingEnabled snapToInterval={width - 28} decelerationRate="fast" showsHorizontalScrollIndicator={false} contentContainerStyle={s.trainerCarousel}>{[
-      ['Kal', 'Strength', coachMale], ['Maya', 'Mobility', coachFemale], ['Riya', 'Yoga', coachFemale],
-      ['Kabir', 'Cardio', coachMale], ['Neha', 'Nutrition', coachFemale], ['Arjun', 'Conditioning', coachMale],
-    ].map(([name, specialty, photo]) => <Pressable key={name as string} style={({ pressed }) => [s.trainerTile, { width: width - 40, backgroundColor: theme.dark ? '#20201F' : '#F2F2F0', borderColor: theme.dark ? '#333331' : '#E7E7E4', opacity: pressed ? .82 : 1 }]}><View style={s.trainerTileCopy}><Text style={[s.trainerSpecialty, { color: theme.muted }]}>{specialty as string}</Text><Text style={[s.trainerName, { color: theme.text }]}>Coach {name as string}</Text><Text style={[s.trainerDescription, { color: theme.muted }]}>Personal guidance for your next level.</Text><View style={s.trainerTileAction}><Text style={{ color: theme.accent, fontSize: 11, fontWeight: '800' }}>View profile</Text><Ionicons name="arrow-forward" size={13} color={theme.accent}/></View></View><View pointerEvents="none" style={s.coachImageLayer}><Image source={photo as any} resizeMode="contain" style={s.trainerCutout}/></View></Pressable>)}</ScrollView>
+      <SectionHeader title="Your trainers" action="See all" />
+      <ScrollView
+        horizontal
+        pagingEnabled
+        snapToInterval={width - 28}
+        decelerationRate="fast"
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={s.trainerCarousel}
+      >
+        {[
+          ["Kal", "Strength", coachMale],
+          ["Maya", "Mobility", coachFemale],
+          ["Riya", "Yoga", coachFemale],
+          ["Kabir", "Cardio", coachMale],
+          ["Neha", "Nutrition", coachFemale],
+          ["Arjun", "Conditioning", coachMale],
+        ].map(([name, specialty, photo]) => (
+          <Pressable
+            key={name as string}
+            style={({ pressed }) => [
+              s.trainerTile,
+              {
+                width: width - 40,
+                backgroundColor: theme.dark ? "#20201F" : "#F2F2F0",
+                borderColor: theme.dark ? "#333331" : "#E7E7E4",
+                opacity: pressed ? 0.82 : 1,
+              },
+            ]}
+          >
+            <View style={s.trainerTileCopy}>
+              <Text style={[s.trainerSpecialty, { color: theme.muted }]}>
+                {specialty as string}
+              </Text>
+              <Text style={[s.trainerName, { color: theme.text }]}>
+                Coach {name as string}
+              </Text>
+              <Text style={[s.trainerDescription, { color: theme.muted }]}>
+                Personal guidance for your next level.
+              </Text>
+              <View style={s.trainerTileAction}>
+                <Text
+                  style={{
+                    color: theme.accent,
+                    fontSize: 11,
+                    fontWeight: "800",
+                  }}
+                >
+                  View profile
+                </Text>
+                <Ionicons name="arrow-forward" size={13} color={theme.accent} />
+              </View>
+            </View>
+            <View pointerEvents="none" style={s.coachImageLayer}>
+              <Image
+                source={photo as any}
+                resizeMode="contain"
+                style={s.trainerCutout}
+              />
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
 
-    {featured && <><SectionHeader title="Continue training" action="See all"/><ImageBackground source={{ uri: featured.thumbnailUrl }} imageStyle={s.workoutImage} style={s.workoutHero}><View style={s.workoutShade}/><View style={s.levelPill}><Ionicons name="flash" size={12} color="#fff"/><Text style={s.levelText}>{featured.category}</Text></View><View style={s.workoutCopy}><Text style={s.workoutTitle}>{featured.title}</Text><Text style={s.workoutSubtitle}>{featured.description}</Text><View style={s.workoutActions}><View style={s.timePill}><Ionicons name="time-outline" size={15} color={theme.text}/><Text style={{ color: theme.text, fontWeight: '800', fontSize: 12 }}>{featured.duration}</Text></View><Pressable onPress={() => nav.navigate('VideoDetails', { videoId: featured.id })} style={[s.playButton, { backgroundColor: theme.accent }]}><Ionicons name="play" size={17} color="#fff"/></Pressable></View></View></ImageBackground></>}
+      {featured && (
+        <>
+          <SectionHeader title="Continue training" action="See all" />
+          <ImageBackground
+            source={{ uri: featured.thumbnailUrl }}
+            imageStyle={s.workoutImage}
+            style={s.workoutHero}
+          >
+            <View style={s.workoutShade} />
+            <View style={s.levelPill}>
+              <Ionicons name="flash" size={12} color="#fff" />
+              <Text style={s.levelText}>{featured.category}</Text>
+            </View>
+            <View style={s.workoutCopy}>
+              <Text style={s.workoutTitle}>{featured.title}</Text>
+              <Text style={s.workoutSubtitle}>{featured.description}</Text>
+              <View style={s.workoutActions}>
+                <View style={s.timePill}>
+                  <Ionicons name="time-outline" size={15} color={theme.text} />
+                  <Text
+                    style={{
+                      color: theme.text,
+                      fontWeight: "800",
+                      fontSize: 12,
+                    }}
+                  >
+                    {featured.duration}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() =>
+                    nav.navigate("VideoDetails", { videoId: featured.id })
+                  }
+                  style={[s.playButton, { backgroundColor: theme.accent }]}
+                >
+                  <Ionicons name="play" size={17} color="#fff" />
+                </Pressable>
+              </View>
+            </View>
+          </ImageBackground>
+        </>
+      )}
 
-    <SectionHeader title="Scheduled" action="All schedules"/>
-    <View style={s.scheduleList}>{[
-      ['TODAY', '7:00', 'Bench Press', 'Strength · 4 sets'],
-      ['TOM', '6:30', 'Core Control', 'Core · 25 min'],
-      ['FRI', '8:00', 'Mobility Flow', 'Recovery · 30 min'],
-    ].map(([day, time, title, detail]) => <View key={title} style={[s.scheduleCard, { backgroundColor: theme.dark ? '#191918' : '#FAFAF8', borderColor: theme.dark ? '#30302E' : '#ECEBE7' }]}><View style={[s.dateBlock, { backgroundColor: theme.dark ? '#302019' : theme.accentSoft }]}><Text style={[s.dateDay, { color: theme.accent }]}>{day}</Text><Text style={[s.dateTime, { color: theme.text }]}>{time}</Text></View><View style={{ flex: 1 }}><Text style={[s.rowTitle, { color: theme.text }]}>{title}</Text><Text style={{ color: theme.muted, fontSize: 12, marginTop: 3 }}>{detail}</Text></View><Pressable style={[s.schedulePlay, { backgroundColor: theme.accent }]}><Ionicons name="play" size={14} color="#fff"/></Pressable></View>)}</View>
-  </Shell>;
+      <SectionHeader title="Scheduled" action="All schedules" />
+      <View style={s.scheduleList}>
+        {[
+          ["TODAY", "7:00", "Bench Press", "Strength · 4 sets"],
+          ["TOM", "6:30", "Core Control", "Core · 25 min"],
+          ["FRI", "8:00", "Mobility Flow", "Recovery · 30 min"],
+        ].map(([day, time, title, detail]) => (
+          <View
+            key={title}
+            style={[
+              s.scheduleCard,
+              {
+                backgroundColor: theme.dark ? "#191918" : "#FAFAF8",
+                borderColor: theme.dark ? "#30302E" : "#ECEBE7",
+              },
+            ]}
+          >
+            <View
+              style={[
+                s.dateBlock,
+                { backgroundColor: theme.dark ? "#302019" : theme.accentSoft },
+              ]}
+            >
+              <Text style={[s.dateDay, { color: theme.accent }]}>{day}</Text>
+              <Text style={[s.dateTime, { color: theme.text }]}>{time}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.rowTitle, { color: theme.text }]}>{title}</Text>
+              <Text style={{ color: theme.muted, fontSize: 12, marginTop: 3 }}>
+                {detail}
+              </Text>
+            </View>
+            <Pressable
+              style={[s.schedulePlay, { backgroundColor: theme.accent }]}
+            >
+              <Ionicons name="play" size={14} color="#fff" />
+            </Pressable>
+          </View>
+        ))}
+      </View>
+    </Shell>
+  );
 };
 
 export const ExploreScreen = () => {
-  const { theme } = useAppTheme(); const nav = useNavigation<Nav>();
+  const { theme } = useAppTheme();
+  const nav = useNavigation<Nav>();
   const { plans, videos, loading, error } = useCatalog();
-  const [active, setActive] = useState('All'); const [query, setQuery] = useState('');
-  const categories = ['All', ...plans.filter(plan => videos.some(video => video.packageId === plan.id)).map(plan => plan.name)];
-  const shown = useMemo(() => videos.filter(v => (active === 'All' || v.category === active) && v.title.toLowerCase().includes(query.toLowerCase())), [active, query, videos]);
-  return <Shell><AppHeader title="Explore" subtitle="Find your next workout."/>
-    <View style={[s.search, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}><Ionicons name="search" size={20} color={theme.muted}/><TextInput value={query} onChangeText={setQuery} placeholder="Search workouts" placeholderTextColor={theme.muted} style={{ flex: 1, color: theme.text, fontSize: 16 }}/></View>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>{categories.map(c => <Pressable key={c} onPress={() => setActive(c)} style={[s.chip, { backgroundColor: active === c ? theme.accent : theme.surfaceAlt }]}><Text style={{ color: active === c ? '#fff' : theme.text, fontWeight: '700' }}>{c}</Text></Pressable>)}</ScrollView>
-    <SectionHeader title={`${active} workouts`}/>
-    {loading ? <LoadingState/> : error ? <EmptyState title={error}/> : shown.length === 0 ? <EmptyState title="No workouts in your active subscriptions"/> : <View style={s.workoutList}>{shown.map(v => <Pressable key={v.id} onPress={() => nav.navigate('VideoDetails', { videoId: v.id })} style={({ pressed }) => [s.exploreCard, { opacity: pressed ? .82 : 1 }]}><ImageBackground source={{ uri: v.thumbnailUrl }} resizeMode="cover" imageStyle={s.exploreImage} style={s.exploreImage}><View style={s.exploreShade}/><View style={s.exploreContent}><View style={s.exploreTop}><View style={s.darkPill}><Text style={s.darkPillText}>{v.category}</Text></View></View><View><Text style={s.exploreTitle}>{v.title}</Text><Text style={s.exploreTrainer}>with {v.trainer}</Text><View style={s.exploreActions}><View style={s.whiteTimePill}><Ionicons name="time-outline" size={15} color={theme.text}/><Text style={{ color: theme.text, fontSize: 12, fontWeight: '800' }}>{v.duration}</Text></View><View style={[s.explorePlay, { backgroundColor: theme.accent }]}><Ionicons name="play" size={16} color="#fff"/></View></View></View></View></ImageBackground></Pressable>)}</View>}
-  </Shell>;
+  const [active, setActive] = useState("All");
+  const [query, setQuery] = useState("");
+  const categories = [
+    "All",
+    ...plans
+      .filter((plan) => videos.some((video) => video.packageId === plan.id))
+      .map((plan) => plan.name),
+  ];
+  const shown = useMemo(
+    () =>
+      videos.filter(
+        (v) =>
+          (active === "All" || v.category === active) &&
+          v.title.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [active, query, videos],
+  );
+  return (
+    <Shell>
+      <AppHeader title="Explore" subtitle="Find your next workout." />
+      <View
+        style={[
+          s.search,
+          { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
+        ]}
+      >
+        <Ionicons name="search" size={20} color={theme.muted} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search workouts"
+          placeholderTextColor={theme.muted}
+          style={{ flex: 1, color: theme.text, fontSize: 16 }}
+        />
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 8 }}
+      >
+        {categories.map((c) => (
+          <Pressable
+            key={c}
+            onPress={() => setActive(c)}
+            style={[
+              s.chip,
+              {
+                backgroundColor: active === c ? theme.accent : theme.surfaceAlt,
+              },
+            ]}
+          >
+            <Text
+              style={{
+                color: active === c ? "#fff" : theme.text,
+                fontWeight: "700",
+              }}
+            >
+              {c}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+      <SectionHeader title={`${active} workouts`} />
+      {loading ? (
+        <LoadingState />
+      ) : error ? (
+        <EmptyState title={error} />
+      ) : shown.length === 0 ? (
+        <EmptyState title="No workouts in your active subscriptions" />
+      ) : (
+        <View style={s.workoutList}>
+          {shown.map((v) => (
+            <Pressable
+              key={v.id}
+              onPress={() => nav.navigate("VideoDetails", { videoId: v.id })}
+              style={({ pressed }) => [
+                s.exploreCard,
+                { opacity: pressed ? 0.82 : 1 },
+              ]}
+            >
+              <ImageBackground
+                source={{ uri: v.thumbnailUrl }}
+                resizeMode="cover"
+                imageStyle={s.exploreImage}
+                style={s.exploreImage}
+              >
+                <View style={s.exploreShade} />
+                <View style={s.exploreContent}>
+                  <View style={s.exploreTop}>
+                    <View style={s.darkPill}>
+                      <Text style={s.darkPillText}>{v.category}</Text>
+                    </View>
+                  </View>
+                  <View>
+                    <Text style={s.exploreTitle}>{v.title}</Text>
+                    <Text style={s.exploreTrainer}>with {v.trainer}</Text>
+                    <View style={s.exploreActions}>
+                      <View style={s.whiteTimePill}>
+                        <Ionicons
+                          name="time-outline"
+                          size={15}
+                          color={theme.text}
+                        />
+                        <Text
+                          style={{
+                            color: theme.text,
+                            fontSize: 12,
+                            fontWeight: "800",
+                          }}
+                        >
+                          {v.duration}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          s.explorePlay,
+                          { backgroundColor: theme.accent },
+                        ]}
+                      >
+                        <Ionicons name="play" size={16} color="#fff" />
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </ImageBackground>
+            </Pressable>
+          ))}
+        </View>
+      )}
+    </Shell>
+  );
 };
-export const PlansScreen = () => { const nav = useNavigation<Nav>(); const { plans, loading, error } = useCatalog(); return <Shell><AppHeader title="Membership" subtitle="Choose the program that matches your goal."/>{loading ? <LoadingState/> : error ? <EmptyState title={error}/> : plans.map(p => <PlanCard key={p.id} plan={p} onDetails={() => nav.navigate('PlanDetails',{planId:p.id})} onChoose={() => nav.navigate('Checkout',{planId:p.id})}/>)}</Shell>; };
-export const SubscriptionScreen = () => { const { theme } = useAppTheme(); const nav=useNavigation<Nav>(); const { plans, subscriptions }=useCatalog(); const active=subscriptions.filter(item=>item.status==='active'&&new Date(item.expiresAt).getTime()>Date.now()); return <Shell><AppHeader title="My subscriptions" subtitle="Your active course access."/>{active.length===0?<EmptyState title="You have no active subscriptions"/>:active.map(item=>{const plan=plans.find(p=>p.id===item.packageId);if(!plan)return null;const days=Math.max(0,Math.ceil((new Date(item.expiresAt).getTime()-Date.now())/86400000));return <GlassCard key={item.id}><View style={s.infoHead}><Text style={[s.subscriptionTitle,{color:theme.text}]}>{plan.name}</Text><StatusBadge label="Active" tone="success"/></View>{[['Expires',new Date(item.expiresAt).toLocaleDateString()],['Days remaining',`${days} days`],['Access',`${plan.name} videos`]].map(([a,b])=><View key={a} style={s.infoRow}><Text style={{color:theme.muted}}>{a}</Text><Text style={{color:theme.text,fontWeight:'800'}}>{b}</Text></View>)}</GlassCard>})}<AppButton title="Browse packages" onPress={()=>nav.navigate('Main')}/></Shell>; };
+export const PlansScreen = () => {
+  const nav = useNavigation<Nav>();
+  const { plans, loading, error } = useCatalog();
+  return (
+    <Shell>
+      <AppHeader
+        title="Membership"
+        subtitle="Choose the program that matches your goal."
+      />
+      {loading ? (
+        <LoadingState />
+      ) : error ? (
+        <EmptyState title={error} />
+      ) : (
+        plans.map((p) => (
+          <PlanCard
+            key={p.id}
+            plan={p}
+            onDetails={() => nav.navigate("PlanDetails", { planId: p.id })}
+            onChoose={() => nav.navigate("Checkout", { planId: p.id })}
+          />
+        ))
+      )}
+    </Shell>
+  );
+};
+export const SubscriptionScreen = () => {
+  const { theme } = useAppTheme();
+  const nav = useNavigation<Nav>();
+  const { plans, subscriptions } = useCatalog();
+  const active = subscriptions.filter(
+    (item) =>
+      item.status === "active" &&
+      new Date(item.expiresAt).getTime() > Date.now(),
+  );
+  return (
+    <Shell>
+      <AppHeader
+        title="My subscriptions"
+        subtitle="Your active course access."
+      />
+      {active.length === 0 ? (
+        <EmptyState title="You have no active subscriptions" />
+      ) : (
+        active.map((item) => {
+          const plan = plans.find((p) => p.id === item.packageId);
+          if (!plan) return null;
+          const days = Math.max(
+            0,
+            Math.ceil(
+              (new Date(item.expiresAt).getTime() - Date.now()) / 86400000,
+            ),
+          );
+          return (
+            <GlassCard key={item.id}>
+              <View style={s.infoHead}>
+                <Text style={[s.subscriptionTitle, { color: theme.text }]}>
+                  {plan.name}
+                </Text>
+                <StatusBadge label="Active" tone="success" />
+              </View>
+              {[
+                ["Expires", new Date(item.expiresAt).toLocaleDateString()],
+                ["Days remaining", `${days} days`],
+                ["Access", `${plan.name} videos`],
+              ].map(([a, b]) => (
+                <View key={a} style={s.infoRow}>
+                  <Text style={{ color: theme.muted }}>{a}</Text>
+                  <Text style={{ color: theme.text, fontWeight: "800" }}>
+                    {b}
+                  </Text>
+                </View>
+              ))}
+            </GlassCard>
+          );
+        })
+      )}
+      <AppButton title="Browse packages" onPress={() => nav.navigate("Main")} />
+    </Shell>
+  );
+};
 
 const s = StyleSheet.create({
-  page:{paddingHorizontal:20,paddingTop:18,paddingBottom:128,gap:18}, welcome:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:4},welcomeUser:{flexDirection:'row',alignItems:'center',gap:11},userPhoto:{width:44,height:44,borderRadius:16},welcomeName:{fontSize:23,fontWeight:'900',letterSpacing:-.5},iconButton:{width:44,height:44,borderRadius:16,alignItems:'center',justifyContent:'center'},notificationDot:{position:'absolute',width:7,height:7,borderRadius:4,right:10,top:10},
-  homeHero:{height:220,borderRadius:26,overflow:'hidden',padding:18,justifyContent:'space-between'},homeHeroImage:{borderRadius:26},homeHeroShade:{...StyleSheet.absoluteFillObject,backgroundColor:'rgba(10,7,5,.48)'},homeHeroBadge:{alignSelf:'flex-start',height:28,paddingHorizontal:10,borderRadius:99,backgroundColor:'rgba(255,255,255,.16)',borderWidth:1,borderColor:'rgba(255,255,255,.28)',flexDirection:'row',alignItems:'center',gap:5},homeHeroBadgeText:{color:'#fff',fontSize:10,fontWeight:'900',letterSpacing:.6},homeHeroCopy:{alignItems:'flex-start'},homeHeroTitle:{color:'#fff',fontSize:28,lineHeight:30,fontWeight:'900',letterSpacing:-.8},homeHeroSubtitle:{color:'rgba(255,255,255,.78)',fontSize:12,marginTop:6},homeHeroButton:{height:38,borderRadius:99,paddingHorizontal:14,flexDirection:'row',alignItems:'center',gap:7,marginTop:14},homeHeroButtonText:{color:'#fff',fontSize:12,fontWeight:'900'},
-  trainerCarousel:{gap:12,paddingTop:45,paddingBottom:3},trainerTile:{height:158,borderRadius:22,borderWidth:1,padding:18,justifyContent:'center',overflow:'visible'},coachImageLayer:{position:'absolute',width:164,height:205,right:-2,bottom:0,zIndex:5,elevation:5,overflow:'visible'},trainerCutout:{width:'100%',height:'100%'},trainerTileCopy:{width:'55%',gap:3,zIndex:6},trainerSpecialty:{fontSize:10,fontWeight:'800',textTransform:'uppercase',letterSpacing:.6},trainerName:{fontSize:22,fontWeight:'900',letterSpacing:-.5},trainerDescription:{fontSize:11,lineHeight:15,marginTop:2},trainerTileAction:{flexDirection:'row',alignItems:'center',gap:4,marginTop:8},rowTitle:{fontSize:16,fontWeight:'800'},
-  workoutHero:{height:230,borderRadius:24,overflow:'hidden',padding:16,justifyContent:'space-between'},workoutImage:{borderRadius:24},workoutShade:{...StyleSheet.absoluteFillObject,backgroundColor:'rgba(0,0,0,.28)'},levelPill:{alignSelf:'flex-start',flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'rgba(0,0,0,.36)',borderColor:'rgba(255,255,255,.28)',borderWidth:1,paddingHorizontal:10,paddingVertical:6,borderRadius:99},levelText:{color:'#fff',fontSize:11,fontWeight:'700'},workoutCopy:{maxWidth:220},workoutTitle:{color:'#fff',fontSize:26,fontWeight:'900'},workoutSubtitle:{color:'rgba(255,255,255,.78)',fontSize:13,lineHeight:18,marginTop:3},workoutActions:{flexDirection:'row',gap:8,marginTop:14},timePill:{height:36,paddingHorizontal:12,borderRadius:99,backgroundColor:'#fff',flexDirection:'row',alignItems:'center',gap:6},playButton:{width:36,height:36,borderRadius:18,alignItems:'center',justifyContent:'center'},
-  scheduleList:{gap:9},scheduleCard:{minHeight:72,borderRadius:20,borderWidth:1,padding:10,flexDirection:'row',alignItems:'center',gap:12},dateBlock:{width:52,height:50,borderRadius:14,alignItems:'center',justifyContent:'center'},dateDay:{fontSize:9,fontWeight:'900',letterSpacing:.5},dateTime:{fontSize:14,fontWeight:'900',marginTop:2},schedulePlay:{width:34,height:34,borderRadius:17,alignItems:'center',justifyContent:'center'},
-  search:{height:56,borderRadius:19,borderWidth:1,paddingHorizontal:16,flexDirection:'row',alignItems:'center',gap:10},chip:{paddingHorizontal:16,paddingVertical:11,borderRadius:14},workoutList:{gap:13},exploreCard:{height:154,borderRadius:22,overflow:'hidden'},exploreImage:{flex:1,borderRadius:22},exploreShade:{...StyleSheet.absoluteFillObject,backgroundColor:'rgba(5,5,5,.42)'},exploreContent:{flex:1,padding:14,justifyContent:'space-between'},exploreTop:{flexDirection:'row',justifyContent:'space-between'},darkPill:{alignSelf:'flex-start',height:25,paddingHorizontal:9,borderRadius:99,backgroundColor:'rgba(0,0,0,.34)',borderColor:'rgba(255,255,255,.25)',borderWidth:1,flexDirection:'row',alignItems:'center',gap:4},darkPillText:{color:'#fff',fontSize:10,fontWeight:'700'},exploreTitle:{color:'#fff',fontSize:21,fontWeight:'900'},exploreTrainer:{color:'rgba(255,255,255,.72)',fontSize:11,marginTop:1},exploreActions:{flexDirection:'row',alignItems:'center',gap:7,marginTop:9},whiteTimePill:{height:32,paddingHorizontal:11,borderRadius:99,backgroundColor:'#fff',flexDirection:'row',alignItems:'center',gap:5},explorePlay:{width:32,height:32,borderRadius:16,alignItems:'center',justifyContent:'center'},infoHead:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:4},subscriptionTitle:{fontSize:23,fontWeight:'900'},infoRow:{flexDirection:'row',justifyContent:'space-between',paddingVertical:5},
+  page: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 128, gap: 18 },
+  welcome: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  welcomeUser: { flexDirection: "row", alignItems: "center", gap: 11 },
+  userPhoto: { width: 44, height: 44, borderRadius: 16 },
+  welcomeName: { fontSize: 23, fontWeight: "900", letterSpacing: -0.5 },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notificationDot: {
+    position: "absolute",
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    right: 10,
+    top: 10,
+  },
+  homeHero: {
+    height: 220,
+    borderRadius: 26,
+    overflow: "hidden",
+    padding: 18,
+    justifyContent: "space-between",
+  },
+  homeHeroImage: { borderRadius: 26 },
+  homeHeroShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(10,7,5,.48)",
+  },
+  homeHeroBadge: {
+    alignSelf: "flex-start",
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 99,
+    backgroundColor: "rgba(255,255,255,.16)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,.28)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  homeHeroBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.6,
+  },
+  homeHeroCopy: { alignItems: "flex-start" },
+  homeHeroTitle: {
+    color: "#fff",
+    fontSize: 28,
+    lineHeight: 30,
+    fontWeight: "900",
+    letterSpacing: -0.8,
+  },
+  homeHeroSubtitle: {
+    color: "rgba(255,255,255,.78)",
+    fontSize: 12,
+    marginTop: 6,
+  },
+  homeHeroButton: {
+    height: 38,
+    borderRadius: 99,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginTop: 14,
+  },
+  homeHeroButtonText: { color: "#fff", fontSize: 12, fontWeight: "900" },
+  trainerCarousel: { gap: 12, paddingTop: 45, paddingBottom: 3 },
+  trainerTile: {
+    height: 158,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 18,
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  coachImageLayer: {
+    position: "absolute",
+    width: 164,
+    height: 205,
+    right: -2,
+    bottom: 0,
+    zIndex: 5,
+    elevation: 5,
+    overflow: "visible",
+  },
+  trainerCutout: { width: "100%", height: "100%" },
+  trainerTileCopy: { width: "55%", gap: 3, zIndex: 6 },
+  trainerSpecialty: {
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  trainerName: { fontSize: 22, fontWeight: "900", letterSpacing: -0.5 },
+  trainerDescription: { fontSize: 11, lineHeight: 15, marginTop: 2 },
+  trainerTileAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 8,
+  },
+  rowTitle: { fontSize: 16, fontWeight: "800" },
+  workoutHero: {
+    height: 230,
+    borderRadius: 24,
+    overflow: "hidden",
+    padding: 16,
+    justifyContent: "space-between",
+  },
+  workoutImage: { borderRadius: 24 },
+  workoutShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,.28)",
+  },
+  levelPill: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(0,0,0,.36)",
+    borderColor: "rgba(255,255,255,.28)",
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 99,
+  },
+  levelText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  workoutCopy: { maxWidth: 220 },
+  workoutTitle: { color: "#fff", fontSize: 26, fontWeight: "900" },
+  workoutSubtitle: {
+    color: "rgba(255,255,255,.78)",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 3,
+  },
+  workoutActions: { flexDirection: "row", gap: 8, marginTop: 14 },
+  timePill: {
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: 99,
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  playButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scheduleList: { gap: 9 },
+  scheduleCard: {
+    minHeight: 72,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  dateBlock: {
+    width: 52,
+    height: 50,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dateDay: { fontSize: 9, fontWeight: "900", letterSpacing: 0.5 },
+  dateTime: { fontSize: 14, fontWeight: "900", marginTop: 2 },
+  schedulePlay: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  search: {
+    height: 56,
+    borderRadius: 19,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  chip: { paddingHorizontal: 16, paddingVertical: 11, borderRadius: 14 },
+  workoutList: { gap: 13 },
+  exploreCard: { height: 154, borderRadius: 22, overflow: "hidden" },
+  exploreImage: { flex: 1, borderRadius: 22 },
+  exploreShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(5,5,5,.42)",
+  },
+  exploreContent: { flex: 1, padding: 14, justifyContent: "space-between" },
+  exploreTop: { flexDirection: "row", justifyContent: "space-between" },
+  darkPill: {
+    alignSelf: "flex-start",
+    height: 25,
+    paddingHorizontal: 9,
+    borderRadius: 99,
+    backgroundColor: "rgba(0,0,0,.34)",
+    borderColor: "rgba(255,255,255,.25)",
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  darkPillText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  exploreTitle: { color: "#fff", fontSize: 21, fontWeight: "900" },
+  exploreTrainer: {
+    color: "rgba(255,255,255,.72)",
+    fontSize: 11,
+    marginTop: 1,
+  },
+  exploreActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginTop: 9,
+  },
+  whiteTimePill: {
+    height: 32,
+    paddingHorizontal: 11,
+    borderRadius: 99,
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  explorePlay: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  infoHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  subscriptionTitle: { fontSize: 23, fontWeight: "900" },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 5,
+  },
 });

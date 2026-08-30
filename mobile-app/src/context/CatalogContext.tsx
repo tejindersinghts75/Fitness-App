@@ -1,7 +1,16 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { contentService } from '../services/contentService';
-import { Plan, UserSubscription, Video } from '../types';
-import { useAuth } from './AuthContext';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { AppState } from "react-native";
+import { contentService } from "../services/contentService";
+import { Plan, UserSubscription, Video } from "../types";
+import { useAuth } from "./AuthContext";
 
 type CatalogContextValue = {
   plans: Plan[];
@@ -22,46 +31,105 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const requestId = useRef(0);
 
   const refresh = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     if (!user) {
-      setPlans([]); setVideos([]); setSubscriptions([]); setLoading(false); setError('');
+      setPlans([]);
+      setVideos([]);
+      setSubscriptions([]);
+      setLoading(false);
+      setError("");
       return;
     }
-    setLoading(true); setError('');
+    setLoading(true);
+    setError("");
     try {
       const nextPlans = await contentService.fetchPackages();
       const [nextSubscriptions, nextVideos] = await Promise.all([
         contentService.fetchSubscriptions(user.id),
         contentService.fetchEntitledVideos(nextPlans),
       ]);
-      setPlans(nextPlans); setSubscriptions(nextSubscriptions); setVideos(nextVideos);
+      if (currentRequest === requestId.current) {
+        setPlans(nextPlans);
+        setSubscriptions(nextSubscriptions);
+        setVideos(nextVideos);
+      }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to load your workout library.');
+      if (currentRequest === requestId.current) {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Unable to load your workout library.",
+        );
+      }
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
   }, [user]);
 
-  useEffect(() => { refresh().catch(() => undefined); }, [refresh]);
+  useEffect(() => {
+    refresh().catch(() => undefined);
+  }, [refresh]);
 
-  const hasActivePackage = useCallback((packageId: string) => subscriptions.some(item => item.packageId === packageId && item.status === 'active' && new Date(item.expiresAt).getTime() > Date.now()), [subscriptions]);
+  useEffect(() => {
+    const listener = AppState.addEventListener("change", (state) => {
+      if (state === "active") refresh().catch(() => undefined);
+    });
+    return () => listener.remove();
+  }, [refresh]);
 
-  const value = useMemo<CatalogContextValue>(() => ({
-    plans, videos, subscriptions, loading, error, refresh, hasActivePackage,
-    activateDummySubscription: async packageId => {
-      await contentService.activateDummySubscription(packageId);
-      await refresh();
-    },
-  }), [error, hasActivePackage, loading, plans, refresh, subscriptions, videos]);
+  useEffect(() => {
+    const expirations = subscriptions
+      .filter((item) => item.status === "active")
+      .map((item) => new Date(item.expiresAt).getTime())
+      .filter((timestamp) => timestamp > Date.now());
+    if (!expirations.length) return;
 
-  return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
+    const nextExpiration = Math.min(...expirations);
+    const delay = Math.min(nextExpiration - Date.now() + 250, 2_147_483_647);
+    const timer = setTimeout(() => refresh().catch(() => undefined), delay);
+    return () => clearTimeout(timer);
+  }, [refresh, subscriptions]);
+
+  const hasActivePackage = useCallback(
+    (packageId: string) =>
+      subscriptions.some(
+        (item) =>
+          item.packageId === packageId &&
+          item.status === "active" &&
+          new Date(item.expiresAt).getTime() > Date.now(),
+      ),
+    [subscriptions],
+  );
+
+  const value = useMemo<CatalogContextValue>(
+    () => ({
+      plans,
+      videos,
+      subscriptions,
+      loading,
+      error,
+      refresh,
+      hasActivePackage,
+      activateDummySubscription: async (packageId) => {
+        await contentService.activateDummySubscription(packageId);
+        await refresh();
+      },
+    }),
+    [error, hasActivePackage, loading, plans, refresh, subscriptions, videos],
+  );
+
+  return (
+    <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>
+  );
 };
 
 export const useCatalog = () => {
   const context = useContext(CatalogContext);
-  if (!context) throw new Error('useCatalog must be used inside CatalogProvider.');
+  if (!context)
+    throw new Error("useCatalog must be used inside CatalogProvider.");
   return context;
 };
-
