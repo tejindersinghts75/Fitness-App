@@ -27,6 +27,23 @@ type VideoItem = {
   is_published: boolean;
   error_message: string | null;
 };
+type AdminSection = "packages" | "videos" | "subscriptions" | "users";
+type SubscriptionItem = {
+  id: string;
+  status: string;
+  starts_at: string;
+  expires_at: string;
+  payment_provider: string;
+  user_id: string;
+  packages: { name: string } | null;
+};
+type ProfileItem = {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  created_at: string;
+};
 const money = new Intl.NumberFormat("en-IN", {
   style: "currency",
   currency: "INR",
@@ -189,6 +206,10 @@ export default function AdminPortal() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [activeSection, setActiveSection] =
+    useState<AdminSection>("packages");
+  const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>([]);
+  const [users, setUsers] = useState<ProfileItem[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const filtered = useMemo(
     () =>
@@ -246,6 +267,27 @@ export default function AdminPortal() {
     setPackages((p || []) as PackageItem[]);
     setVideos((v || []) as VideoItem[]);
   }
+  async function loadAdminOverview(section: AdminSection) {
+    setActiveSection(section);
+    setError("");
+    if ((section !== "subscriptions" && section !== "users") || !session)
+      return;
+    setBusy(true);
+    try {
+      const response = await fetch("/api/admin/overview", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.error || "Unable to load admin data");
+      setSubscriptions(result.subscriptions || []);
+      setUsers(result.users || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to load admin data");
+    } finally {
+      setBusy(false);
+    }
+  }
   async function createPackage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -274,6 +316,7 @@ export default function AdminPortal() {
   async function uploadVideo(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected || !session || !fileRef.current?.files?.[0]) return;
+    const form = event.currentTarget;
     setBusy(true);
     setError("");
     setUploadProgress(0);
@@ -328,9 +371,12 @@ export default function AdminPortal() {
         .from("videos")
         .update({ status: "processing" })
         .eq("id", record.id);
-      setNotice(`${record.title} uploaded. Mux is processing it now.`);
-      (event.currentTarget as HTMLFormElement).reset();
+      form.reset();
       await refresh();
+      setSelected(null);
+      setNotice(
+        `${record.title} was uploaded successfully. Mux is processing it now.`,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
       await supabase
@@ -409,16 +455,28 @@ export default function AdminPortal() {
           </div>
         </Link>
         <nav aria-label="Admin navigation">
-          <button className="nav-item active">
+          <button
+            className={`nav-item ${activeSection === "packages" ? "active" : ""}`}
+            onClick={() => void loadAdminOverview("packages")}
+          >
             <span>▦</span>Packages
           </button>
-          <button className="nav-item">
+          <button
+            className={`nav-item ${activeSection === "videos" ? "active" : ""}`}
+            onClick={() => void loadAdminOverview("videos")}
+          >
             <span>▷</span>Videos
           </button>
-          <button className="nav-item">
+          <button
+            className={`nav-item ${activeSection === "subscriptions" ? "active" : ""}`}
+            onClick={() => void loadAdminOverview("subscriptions")}
+          >
             <span>◎</span>Subscriptions
           </button>
-          <button className="nav-item">
+          <button
+            className={`nav-item ${activeSection === "users" ? "active" : ""}`}
+            onClick={() => void loadAdminOverview("users")}
+          >
             <span>♙</span>Users
           </button>
         </nav>
@@ -436,12 +494,14 @@ export default function AdminPortal() {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <p>CONTENT LIBRARY</p>
-            <h1>Packages</h1>
+            <p>ADMIN PORTAL</p>
+            <h1>{activeSection[0].toUpperCase() + activeSection.slice(1)}</h1>
           </div>
-          <button className="primary" onClick={() => setShowForm(true)}>
-            ＋ Create package
-          </button>
+          {activeSection === "packages" && (
+            <button className="primary" onClick={() => setShowForm(true)}>
+              ＋ Create package
+            </button>
+          )}
         </header>
         <section className="summary">
           <article>
@@ -460,7 +520,21 @@ export default function AdminPortal() {
             <small>Processed and published</small>
           </article>
         </section>
-        <section className="library">
+        <div className="page-messages">
+          {notice && (
+            <div className="notice">
+              ✓ {notice}
+              <button onClick={() => setNotice("")}>×</button>
+            </div>
+          )}
+          {error && (
+            <div className="form-error page-error">
+              {error}
+              <button onClick={() => setError("")}>×</button>
+            </div>
+          )}
+        </div>
+        {activeSection === "packages" && <section className="library">
           <div className="library-head">
             <div>
               <h2>All packages</h2>
@@ -475,18 +549,6 @@ export default function AdminPortal() {
               />
             </label>
           </div>
-          {notice && (
-            <div className="notice">
-              ✓ {notice}
-              <button onClick={() => setNotice("")}>×</button>
-            </div>
-          )}
-          {error && (
-            <div className="form-error page-error">
-              {error}
-              <button onClick={() => setError("")}>×</button>
-            </div>
-          )}
           <div className="package-grid">
             {filtered.map((item, index) => (
               <article className="package-card" key={item.id}>
@@ -530,7 +592,52 @@ export default function AdminPortal() {
               <small>Add pricing, details and Mux videos</small>
             </button>
           </div>
-        </section>
+        </section>}
+        {activeSection === "videos" && (
+          <section className="library admin-table-page">
+            <div className="library-head"><div><h2>All videos</h2><p>Every video uploaded across your packages.</p></div></div>
+            <div className="admin-table">
+              {videos.map((video) => (
+                <article key={video.id}>
+                  <div><strong>{video.title}</strong><small>{packages.find((item) => item.id === video.package_id)?.name || "Unknown package"}</small></div>
+                  <span className={`status-pill ${video.status}`}>{video.status}</span>
+                  <small>{video.trainer}</small>
+                </article>
+              ))}
+              {!videos.length && <p className="empty-state">No videos uploaded yet.</p>}
+            </div>
+          </section>
+        )}
+        {activeSection === "subscriptions" && (
+          <section className="library admin-table-page">
+            <div className="library-head"><div><h2>Subscriptions</h2><p>Users and their current package access.</p></div></div>
+            <div className="admin-table">
+              {subscriptions.map((item) => (
+                <article key={item.id}>
+                  <div><strong>{users.find((user) => user.id === item.user_id)?.email || item.user_id}</strong><small>{item.packages?.name || "Unknown package"}</small></div>
+                  <span className={`status-pill ${item.status}`}>{item.status}</span>
+                  <small>Expires {new Date(item.expires_at).toLocaleDateString("en-IN")}</small>
+                </article>
+              ))}
+              {!busy && !subscriptions.length && <p className="empty-state">No subscriptions found.</p>}
+            </div>
+          </section>
+        )}
+        {activeSection === "users" && (
+          <section className="library admin-table-page">
+            <div className="library-head"><div><h2>Users</h2><p>Verified Fitora member profiles.</p></div></div>
+            <div className="admin-table">
+              {users.map((user) => (
+                <article key={user.id}>
+                  <div><strong>{user.full_name || "Fitora member"}</strong><small>{user.email}</small></div>
+                  <span>{user.phone || "No phone"}</span>
+                  <small>Joined {new Date(user.created_at).toLocaleDateString("en-IN")}</small>
+                </article>
+              ))}
+              {!busy && !users.length && <p className="empty-state">No verified users found.</p>}
+            </div>
+          </section>
+        )}
       </section>
       {showForm && (
         <div className="modal-backdrop">
