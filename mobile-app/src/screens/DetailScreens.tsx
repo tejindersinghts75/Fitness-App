@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackground, AppButton, AppHeader, AppInput, EmptyState, GlassCard, StatusBadge } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useAppTheme } from '../context/ThemeContext';
+import { videoProgressService } from '../services/videoProgressService';
 import { RootStackParamList } from '../types';
 
 type P<N extends keyof RootStackParamList> = NativeStackScreenProps<RootStackParamList, N>;
@@ -37,8 +38,54 @@ export const VideoDetailsScreen = ({ navigation, route }: P<'VideoDetails'>) => 
   const { theme } = useAppTheme(); const { videos } = useCatalog(); const video = videos.find(item => item.id === route.params.videoId);
   const source = video?.muxPlaybackId ? { uri: `https://stream.mux.com/${video.muxPlaybackId}.m3u8` } : null;
   const player = useVideoPlayer(source, instance => { instance.loop = false; });
+  const restored = useRef(false);
+  useEffect(() => {
+    if (!video) return;
+    let active = true;
+    let lastSavedSecond = -5;
+    let latestPosition = 0;
+    let knownDuration = video.durationSeconds;
+    restored.current = false;
+    player.timeUpdateEventInterval = 1;
+    videoProgressService.get(video.id).then(saved => {
+      if (!active || !saved || restored.current) return;
+      const duration = saved.durationSeconds || knownDuration;
+      knownDuration = duration;
+      latestPosition = saved.positionSeconds;
+      if (saved.positionSeconds > 0 && saved.positionSeconds < duration - 3) {
+        try {
+          player.currentTime = saved.positionSeconds;
+        } catch {
+          // The screen may have closed while stored progress was loading.
+        }
+      }
+      restored.current = true;
+    });
+    const sourceSubscription = player.addListener('sourceLoad', ({ duration }) => {
+      if (duration > 0) knownDuration = duration;
+    });
+    const timeSubscription = player.addListener('timeUpdate', ({ currentTime }) => {
+      latestPosition = currentTime;
+      if (Math.abs(currentTime - lastSavedSecond) < 5) return;
+      lastSavedSecond = currentTime;
+      videoProgressService.save(video.id, currentTime, knownDuration).catch(() => undefined);
+    });
+    const endSubscription = player.addListener('playToEnd', () => {
+      latestPosition = knownDuration;
+      videoProgressService.complete(video.id, knownDuration).catch(() => undefined);
+    });
+    return () => {
+      active = false;
+      sourceSubscription.remove();
+      timeSubscription.remove();
+      endSubscription.remove();
+      if (latestPosition > 0) {
+        videoProgressService.save(video.id, latestPosition, knownDuration).catch(() => undefined);
+      }
+    };
+  }, [player, video]);
   if (!video) return <Shell><AppHeader title="Workout" back onBack={() => navigation.goBack()}/><EmptyState title="This video is locked or unavailable. Activate its package to watch it."/><AppButton title="Browse packages" onPress={() => navigation.navigate('Main')}/></Shell>;
-  return <Shell><AppHeader title="Workout" back onBack={() => navigation.goBack()}/><VideoView style={s.player} player={player} nativeControls allowsFullscreen allowsPictureInPicture/><View style={s.row}><View style={{ flex: 1 }}><Text style={[s.videoTitle, { color: theme.text }]}>{video.title}</Text><Text style={{ color: theme.muted, marginTop: 5 }}>{video.category} · {video.duration}</Text></View><StatusBadge label="Unlocked" tone="success"/></View><Text style={[s.heading, { color: theme.text }]}>With {video.trainer}</Text><Text style={{ color: theme.muted, lineHeight: 23 }}>{video.description || 'Follow the trainer at your own pace and listen to your body.'}</Text></Shell>;
+  return <Shell><AppHeader title="Workout" back onBack={() => navigation.goBack()}/><VideoView style={s.player} player={player} nativeControls fullscreenOptions={{ enable: true }} allowsPictureInPicture/><View style={s.row}><View style={{ flex: 1 }}><Text style={[s.videoTitle, { color: theme.text }]}>{video.title}</Text><Text style={{ color: theme.muted, marginTop: 5 }}>{video.category} · {video.duration}</Text></View><StatusBadge label="Unlocked" tone="success"/></View><Text style={[s.heading, { color: theme.text }]}>With {video.trainer}</Text><Text style={{ color: theme.muted, lineHeight: 23 }}>{video.description || 'Follow the trainer at your own pace and listen to your body.'}</Text></Shell>;
 };
 
 export const LockedContentScreen = ({ navigation }: P<'LockedContent'>) => { const { theme } = useAppTheme(); return <Shell><AppHeader title="Workout locked" back onBack={() => navigation.goBack()}/><GlassCard style={{ alignItems: 'center', gap: 12 }}><View style={[s.lockCircle, { backgroundColor: theme.accentSoft }]}><Ionicons name="lock-closed" size={28} color={theme.accent}/></View><Text style={[s.stateTitle, { color: theme.text, fontSize: 25 }]}>Subscription required</Text><Text style={[s.stateCopy, { color: theme.muted }]}>Activate the matching package to unlock its videos.</Text></GlassCard><AppButton title="Browse packages" onPress={() => navigation.navigate('Main')}/></Shell>; };

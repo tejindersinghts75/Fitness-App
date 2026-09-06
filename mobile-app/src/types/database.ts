@@ -21,6 +21,12 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['videos']['Insert']>;
         Relationships: [];
       };
+      coaches: {
+        Row: { id: string; slug: string; name: string; specialty: string; bio: string; experience_years: number; rating: number; clients_count: number; expertise: string[]; photo_url: string; photo_path: string; is_active: boolean; sort_order: number; created_at: string; updated_at: string };
+        Insert: { id?: string; slug: string; name: string; specialty: string; bio?: string; experience_years?: number; rating?: number; clients_count?: number; expertise?: string[]; photo_url: string; photo_path: string; is_active?: boolean; sort_order?: number; created_at?: string; updated_at?: string };
+        Update: Partial<Database['public']['Tables']['coaches']['Insert']>;
+        Relationships: [];
+      };
       user_subscriptions: {
         Row: { id: string; user_id: string; package_id: string; status: 'active' | 'expired' | 'cancelled'; starts_at: string; expires_at: string; payment_provider: string; payment_reference: string | null; created_at: string; updated_at: string };
         Insert: { id?: string; user_id: string; package_id: string; status?: 'active' | 'expired' | 'cancelled'; starts_at?: string; expires_at: string; payment_provider?: string; payment_reference?: string | null; created_at?: string; updated_at?: string };

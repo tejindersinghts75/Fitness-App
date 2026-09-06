@@ -45,10 +45,6 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
-    <key>NSHealthShareUsageDescription</key>
-    <string>Fitora reads your activity, workout, and heart-rate data to show your personal fitness dashboard.</string>
-    <key>NSHealthUpdateUsageDescription</key>
-    <string>Fitora does not write health data without your permission.</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>

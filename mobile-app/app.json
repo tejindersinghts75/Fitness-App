@@ -31,10 +31,13 @@
           }
         }
       ],
-      "expo-video"
+      "expo-video",
+      "expo-status-bar"
     ],
     "extra": {
-      "eas": {}
+      "eas": {
+        "projectId": "60e89ed0-731a-4f14-8027-fadb16396140"
+      }
     }
   }
 }

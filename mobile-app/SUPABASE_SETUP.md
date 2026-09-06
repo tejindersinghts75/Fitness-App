@@ -166,16 +166,17 @@ Password: [Brevo SMTP key]
 
 1. In Supabase, open **Authentication → Email Templates**.
 2. Select **Confirm signup**.
-3. Use a subject such as:
+3. Use this subject so the six-digit code is visible in Android/iPhone notification previews:
 
 ```text
-Confirm your Fitora account
+{{ .Token }} is your Fitora verification code
 ```
 
 4. Copy the HTML from `supabase/templates/confirm-signup.html` into the template editor.
-5. Keep the button URL exactly as `{{ .ConfirmationURL }}`. Supabase generates and verifies this signed link.
-6. Save the template.
-7. In Brevo, disable click/open tracking for these SMTP authentication messages if tracking is enabled. Link rewriting can break Supabase confirmation links.
+5. Select **Magic Link**, use the subject `{{ .Token }} is your Fitora login code`, and copy the HTML from `supabase/templates/magic-link.html`.
+6. Keep the `{{ .Token }}` placeholder unchanged in both templates. Supabase replaces it with the six-digit OTP.
+7. Save both templates.
+8. In Brevo, disable click/open tracking for these SMTP authentication messages if tracking is enabled.
 
 ## Part 11 — Test the complete registration flow
 

@@ -13,4 +13,9 @@ npm start
 
 Press `i` for the iOS simulator, `a` for Android, or scan the Expo QR code on a device.
 
+## Daily Activity native builds
+
+
+The integration is read-only. Fitora requests access only to daily steps and walking/running distance on iOS, and steps and distance on Android.
+
 Authentication and shared profiles use Supabase when `.env` is configured. See `SUPABASE_SETUP.md` and run the included SQL migration first. Subscriptions, content entitlements, videos, and payments remain mock UI flows for later phases.

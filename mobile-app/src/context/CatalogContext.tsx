@@ -9,12 +9,13 @@ import React, {
 } from "react";
 import { AppState } from "react-native";
 import { contentService } from "../services/contentService";
-import { Plan, UserSubscription, Video } from "../types";
+import { Coach, Plan, UserSubscription, Video } from "../types";
 import { useAuth } from "./AuthContext";
 
 type CatalogContextValue = {
   plans: Plan[];
   videos: Video[];
+  coaches: Coach[];
   subscriptions: UserSubscription[];
   loading: boolean;
   error: string;
@@ -29,6 +30,7 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
   const { user } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [coaches, setCoaches] = useState<Coach[]>([]);
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,6 +41,7 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
     if (!user) {
       setPlans([]);
       setVideos([]);
+      setCoaches([]);
       setSubscriptions([]);
       setLoading(false);
       setError("");
@@ -47,7 +50,10 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
     setLoading(true);
     setError("");
     try {
-      const nextPlans = await contentService.fetchPackages();
+      const [nextPlans, nextCoaches] = await Promise.all([
+        contentService.fetchPackages(),
+        contentService.fetchCoaches(),
+      ]);
       const [nextSubscriptions, nextVideos] = await Promise.all([
         contentService.fetchSubscriptions(user.id),
         contentService.fetchEntitledVideos(nextPlans),
@@ -56,6 +62,7 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
         setPlans(nextPlans);
         setSubscriptions(nextSubscriptions);
         setVideos(nextVideos);
+        setCoaches(nextCoaches);
       }
     } catch (caught) {
       if (currentRequest === requestId.current) {
@@ -109,6 +116,7 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
     () => ({
       plans,
       videos,
+      coaches,
       subscriptions,
       loading,
       error,
@@ -119,7 +127,7 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
         await refresh();
       },
     }),
-    [error, hasActivePackage, loading, plans, refresh, subscriptions, videos],
+    [coaches, error, hasActivePackage, loading, plans, refresh, subscriptions, videos],
   );
 
   return (

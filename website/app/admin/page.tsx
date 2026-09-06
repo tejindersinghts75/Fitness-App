@@ -27,7 +27,21 @@ type VideoItem = {
   is_published: boolean;
   error_message: string | null;
 };
-type AdminSection = "packages" | "videos" | "subscriptions" | "users";
+type AdminSection = "packages" | "videos" | "coaches" | "subscriptions" | "users";
+type CoachItem = {
+  id: string;
+  name: string;
+  specialty: string;
+  bio: string;
+  experience_years: number;
+  rating: number;
+  clients_count: number;
+  expertise: string[];
+  photo_url: string;
+  photo_path: string;
+  is_active: boolean;
+  sort_order: number;
+};
 type SubscriptionItem = {
   id: string;
   status: string;
@@ -199,8 +213,10 @@ export default function AdminPortal() {
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [coaches, setCoaches] = useState<CoachItem[]>([]);
   const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [showCoachForm, setShowCoachForm] = useState(false);
   const [selected, setSelected] = useState<PackageItem | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -211,6 +227,7 @@ export default function AdminPortal() {
   const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>([]);
   const [users, setUsers] = useState<ProfileItem[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const coachPhotoRef = useRef<HTMLInputElement>(null);
   const filtered = useMemo(
     () =>
       packages.filter((item) =>
@@ -256,16 +273,90 @@ export default function AdminPortal() {
     if (authorized) void refresh();
   }, [authorized]);
   async function refresh() {
-    const [{ data: p, error: pe }, { data: v, error: ve }] = await Promise.all([
+    const [{ data: p, error: pe }, { data: v, error: ve }, { data: c, error: ce }] = await Promise.all([
       supabase.from("packages").select("*").order("sort_order"),
       supabase.from("videos").select("*").order("sort_order"),
+      supabase.from("coaches").select("*").order("sort_order"),
     ]);
-    if (pe || ve) {
-      setError(pe?.message || ve?.message || "Unable to load content");
+    if (pe || ve || ce) {
+      setError(pe?.message || ve?.message || ce?.message || "Unable to load content");
       return;
     }
     setPackages((p || []) as PackageItem[]);
     setVideos((v || []) as VideoItem[]);
+    setCoaches((c || []) as CoachItem[]);
+  }
+
+  async function createCoach(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const photo = coachPhotoRef.current?.files?.[0];
+    if (!photo) return setError("Choose a coach photo.");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(photo.type))
+      return setError("Use a JPG, PNG, or WebP photo.");
+    if (photo.size > 5 * 1024 * 1024)
+      return setError("Coach photos must be 5 MB or smaller.");
+
+    setBusy(true);
+    setError("");
+    const data = new FormData(form);
+    const name = String(data.get("name") || "").trim();
+    const extension = photo.name.split(".").pop()?.toLowerCase() || "jpg";
+    const photoPath = `${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from("coach-images")
+      .upload(photoPath, photo, { contentType: photo.type, cacheControl: "3600" });
+    if (uploadError) {
+      setBusy(false);
+      return setError(uploadError.message);
+    }
+    const { data: publicPhoto } = supabase.storage.from("coach-images").getPublicUrl(photoPath);
+    const expertise = String(data.get("expertise") || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const { error: insertError } = await supabase.from("coaches").insert({
+      name,
+      slug: `${slugify(name)}-${Date.now().toString().slice(-5)}`,
+      specialty: String(data.get("specialty") || "").trim(),
+      bio: String(data.get("bio") || "").trim(),
+      experience_years: Number(data.get("experience") || 0),
+      rating: Number(data.get("rating") || 5),
+      clients_count: Number(data.get("clients") || 0),
+      expertise,
+      photo_url: publicPhoto.publicUrl,
+      photo_path: photoPath,
+      is_active: data.get("active") === "on",
+      sort_order: coaches.length + 1,
+    });
+    if (insertError) {
+      await supabase.storage.from("coach-images").remove([photoPath]);
+      setBusy(false);
+      return setError(insertError.message);
+    }
+    form.reset();
+    setShowCoachForm(false);
+    setNotice(`${name} was added to the trainer catalog.`);
+    setBusy(false);
+    await refresh();
+  }
+
+  async function toggleCoach(coach: CoachItem) {
+    setError("");
+    const { error: updateError } = await supabase.from("coaches").update({ is_active: !coach.is_active }).eq("id", coach.id);
+    if (updateError) return setError(updateError.message);
+    setNotice(`${coach.name} is now ${coach.is_active ? "hidden from" : "visible in"} the mobile app.`);
+    await refresh();
+  }
+
+  async function deleteCoach(coach: CoachItem) {
+    if (!window.confirm(`Remove ${coach.name} from Fitora?`)) return;
+    setError("");
+    const { error: deleteError } = await supabase.from("coaches").delete().eq("id", coach.id);
+    if (deleteError) return setError(deleteError.message);
+    await supabase.storage.from("coach-images").remove([coach.photo_path]);
+    setNotice(`${coach.name} was removed.`);
+    await refresh();
   }
   async function loadAdminOverview(section: AdminSection) {
     setActiveSection(section);
@@ -468,6 +559,12 @@ export default function AdminPortal() {
             <span>▷</span>Videos
           </button>
           <button
+            className={`nav-item ${activeSection === "coaches" ? "active" : ""}`}
+            onClick={() => void loadAdminOverview("coaches")}
+          >
+            <span>♟</span>Trainers
+          </button>
+          <button
             className={`nav-item ${activeSection === "subscriptions" ? "active" : ""}`}
             onClick={() => void loadAdminOverview("subscriptions")}
           >
@@ -500,6 +597,11 @@ export default function AdminPortal() {
           {activeSection === "packages" && (
             <button className="primary" onClick={() => setShowForm(true)}>
               ＋ Create package
+            </button>
+          )}
+          {activeSection === "coaches" && (
+            <button className="primary" onClick={() => setShowCoachForm(true)}>
+              ＋ Add trainer
             </button>
           )}
         </header>
@@ -608,6 +710,52 @@ export default function AdminPortal() {
             </div>
           </section>
         )}
+        {activeSection === "coaches" && (
+          <section className="library">
+            <div className="library-head">
+              <div>
+                <h2>Trainer directory</h2>
+                <p>Add coach profiles and control who appears in the mobile app.</p>
+              </div>
+            </div>
+            <div className="coach-grid">
+              {coaches.map((coach) => (
+                <article className="coach-card" key={coach.id}>
+                  <div className="coach-photo-wrap">
+                    <img src={coach.photo_url} alt={coach.name} />
+                    <span className={`status-pill ${coach.is_active ? "active" : "draft"}`}>
+                      {coach.is_active ? "Published" : "Hidden"}
+                    </span>
+                  </div>
+                  <div className="coach-card-copy">
+                    <small>{coach.specialty}</small>
+                    <h3>Coach {coach.name}</h3>
+                    <p>{coach.bio}</p>
+                    <div className="coach-meta">
+                      <span>{coach.experience_years} yrs</span>
+                      <span>★ {Number(coach.rating).toFixed(1)}</span>
+                      <span>{coach.clients_count}+ clients</span>
+                    </div>
+                    <div className="coach-tags">
+                      {coach.expertise.slice(0, 3).map((item) => <span key={item}>{item}</span>)}
+                    </div>
+                    <div className="coach-actions">
+                      <button className="secondary" onClick={() => void toggleCoach(coach)}>
+                        {coach.is_active ? "Hide" : "Publish"}
+                      </button>
+                      <button className="danger-button" onClick={() => void deleteCoach(coach)}>Remove</button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+              {!coaches.length && (
+                <button className="new-card coach-new-card" onClick={() => setShowCoachForm(true)}>
+                  <span>＋</span><strong>Add your first trainer</strong><small>The profile will appear in the mobile app when published.</small>
+                </button>
+              )}
+            </div>
+          </section>
+        )}
         {activeSection === "subscriptions" && (
           <section className="library admin-table-page">
             <div className="library-head"><div><h2>Subscriptions</h2><p>Users and their current package access.</p></div></div>
@@ -698,6 +846,35 @@ export default function AdminPortal() {
                 <button className="primary" disabled={busy}>
                   {busy ? "Creating…" : "Create package"}
                 </button>
+              </footer>
+            </form>
+          </section>
+        </div>
+      )}
+      {showCoachForm && (
+        <div className="modal-backdrop">
+          <section className="modal coach-modal" role="dialog" aria-modal="true">
+            <header>
+              <div><small>TRAINER DIRECTORY</small><h2>Add trainer</h2></div>
+              <button onClick={() => setShowCoachForm(false)}>×</button>
+            </header>
+            <form onSubmit={createCoach}>
+              <div className="form-row">
+                <label>Coach name<input name="name" required placeholder="e.g. Arjun Mehta" /></label>
+                <label>Specialty<input name="specialty" required placeholder="e.g. Strength" /></label>
+              </div>
+              <label>Profile photo<input ref={coachPhotoRef} name="photo" type="file" accept="image/jpeg,image/png,image/webp" required /><small>JPG, PNG or WebP · maximum 5 MB</small></label>
+              <label>About the coach<textarea name="bio" required placeholder="Training philosophy, background and coaching style…" /></label>
+              <div className="form-row coach-number-row">
+                <label>Experience (years)<input name="experience" type="number" min="0" defaultValue="5" required /></label>
+                <label>Rating<input name="rating" type="number" min="0" max="5" step="0.1" defaultValue="5" required /></label>
+                <label>Clients coached<input name="clients" type="number" min="0" defaultValue="0" required /></label>
+              </div>
+              <label>Expertise<input name="expertise" required placeholder="Strength training, Form coaching, Mobility" /><small>Separate each skill with a comma.</small></label>
+              <label className="toggle"><input name="active" type="checkbox" defaultChecked /><span />Publish in the mobile app</label>
+              <footer>
+                <button type="button" className="secondary" onClick={() => setShowCoachForm(false)}>Cancel</button>
+                <button className="primary" disabled={busy}>{busy ? "Uploading…" : "Add trainer"}</button>
               </footer>
             </form>
           </section>
