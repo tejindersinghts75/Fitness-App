@@ -1136,7 +1136,7 @@ export const SubscriptionScreen = () => {
                   <StatusBadge label="Active" tone="success" />
                 </View>
                 {[
-                  ["Expires", new Date(item.expiresAt).toLocaleDateString()],
+                  ["Expires on", new Date(item.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })],
                   ["Days remaining", `${days} days`],
                   ["Access", `${plan.name} videos`],
                 ].map(([a, b]) => (
