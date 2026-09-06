@@ -2001,7 +2001,7 @@ const s = StyleSheet.create({
   trainersPage: { paddingHorizontal: 20, paddingBottom: 42, gap: 22 },
   trainersList: { gap: 14 },
   trainersCard: {
-    minHeight: 184,
+    height: 184,
     borderRadius: 24,
     borderWidth: 1,
     padding: 12,
@@ -2011,12 +2011,12 @@ const s = StyleSheet.create({
   },
   trainersPhotoWrap: {
     width: 128,
-    minHeight: 158,
+    height: 160,
     borderRadius: 18,
     overflow: "hidden",
     justifyContent: "flex-end",
   },
-  trainersPhoto: { width: "100%", height: "100%" },
+  trainersPhoto: { width: 128, height: 160 },
   trainersCardCopy: { flex: 1, paddingVertical: 8, justifyContent: "center" },
   trainersSpecialty: { fontFamily: systemFont, fontSize: 9, fontWeight: "900", letterSpacing: 1.1 },
   trainersName: { fontFamily: systemFont, fontSize: 20, lineHeight: 25, fontWeight: "900", marginTop: 4 },
