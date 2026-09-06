@@ -119,7 +119,9 @@ export const ProfileScreen = () => {
                 <Text style={[s.settingLabel, { color: theme.text }]}>Dark mode</Text>
                 <Text style={[s.settingDetail, { color: theme.muted }]}>Adjust the app appearance</Text>
               </View>
-              <Switch value={isDark} onValueChange={toggleTheme} trackColor={{ false: '#D7D7D2', true: theme.accent }} thumbColor="#FFFFFF" />
+              <View style={s.switchSlot}>
+                <Switch value={isDark} onValueChange={toggleTheme} trackColor={{ false: '#D7D7D2', true: theme.accent }} thumbColor="#FFFFFF" />
+              </View>
             </View>
           </View>
         </View>
@@ -165,6 +167,7 @@ const s = StyleSheet.create({
   settingIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   settingLabel: { fontSize: 13, lineHeight: 17, fontWeight: '800' },
   settingDetail: { fontSize: 10, lineHeight: 14, marginTop: 3 },
+  switchSlot: { alignSelf: 'stretch', justifyContent: 'center', alignItems: 'center' },
   logout: { minHeight: 54, borderRadius: 19, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 },
   logoutText: { fontSize: 13, lineHeight: 17, fontWeight: '900' },
   version: { textAlign: 'center', fontSize: 10, lineHeight: 13, marginTop: -8 },
