@@ -447,7 +447,7 @@ export const HomeScreen = () => {
       </View>
 
       {coaches.length > 0 && <>
-      <SectionHeader title="Your trainers" action="See all" />
+      <SectionHeader title="Your trainers" action="See all" onPress={() => nav.navigate("Trainers")} />
       <ScrollView
         horizontal
         pagingEnabled
@@ -653,6 +653,53 @@ export const CategoryVideosScreen = ({ navigation, route }: CategoryVideosProps)
 };
 
 type CoachProfileProps = NativeStackScreenProps<RootStackParamList, "CoachProfile">;
+
+type TrainersProps = NativeStackScreenProps<RootStackParamList, "Trainers">;
+
+export const TrainersScreen = ({ navigation }: TrainersProps) => {
+  const { theme } = useAppTheme();
+  const { coaches, loading, refresh } = useCatalog();
+
+  return (
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: theme.background }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.trainersPage}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => refresh().catch(() => undefined)} tintColor={theme.accent} colors={[theme.accent]} />}
+      >
+        <AppHeader title="Our trainers" subtitle="Meet the experts guiding your progress." back onBack={() => navigation.goBack()} />
+        {loading && !coaches.length ? <LoadingState /> : coaches.length ? (
+          <View style={s.trainersList}>
+            {coaches.map((coach) => (
+              <Pressable
+                key={coach.id}
+                onPress={() => navigation.navigate("CoachProfile", { coachId: coach.id })}
+                style={({ pressed }) => [s.trainersCard, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? .78 : 1 }]}
+              >
+                <View style={[s.trainersPhotoWrap, { backgroundColor: theme.dark ? "#292927" : "#F2F2EF" }]}>
+                  <Image source={{ uri: coach.photoUrl }} resizeMode="contain" style={s.trainersPhoto} />
+                </View>
+                <View style={s.trainersCardCopy}>
+                  <Text style={[s.trainersSpecialty, { color: theme.accent }]}>{coach.specialty.toUpperCase()}</Text>
+                  <Text style={[s.trainersName, { color: theme.text }]}>Coach {coach.name}</Text>
+                  <Text numberOfLines={2} style={[s.trainersBio, { color: theme.muted }]}>{coach.bio}</Text>
+                  <View style={s.trainersMetaRow}>
+                    <Text style={[s.trainersMeta, { color: theme.text }]}>{coach.experienceYears} yrs</Text>
+                    <Text style={[s.trainersMeta, { color: theme.text }]}>★ {coach.rating.toFixed(1)}</Text>
+                  </View>
+                  <View style={s.trainersProfileLink}>
+                    <Text style={{ color: theme.accent, fontWeight: "800", fontSize: 12 }}>View profile</Text>
+                    <Ionicons name="chevron-forward" size={15} color={theme.accent} />
+                  </View>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        ) : <EmptyState title="No trainers are published yet." />}
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
 
 export const CoachProfileScreen = ({ navigation, route }: CoachProfileProps) => {
   const { theme } = useAppTheme();
@@ -1947,6 +1994,32 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  trainersPage: { paddingHorizontal: 20, paddingBottom: 42, gap: 22 },
+  trainersList: { gap: 14 },
+  trainersCard: {
+    minHeight: 184,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 12,
+    flexDirection: "row",
+    gap: 15,
+    overflow: "hidden",
+  },
+  trainersPhotoWrap: {
+    width: 128,
+    minHeight: 158,
+    borderRadius: 18,
+    overflow: "hidden",
+    justifyContent: "flex-end",
+  },
+  trainersPhoto: { width: "100%", height: "100%" },
+  trainersCardCopy: { flex: 1, paddingVertical: 8, justifyContent: "center" },
+  trainersSpecialty: { fontFamily: systemFont, fontSize: 9, fontWeight: "900", letterSpacing: 1.1 },
+  trainersName: { fontFamily: systemFont, fontSize: 20, lineHeight: 25, fontWeight: "900", marginTop: 4 },
+  trainersBio: { fontFamily: systemFont, fontSize: 11, lineHeight: 16, marginTop: 5 },
+  trainersMetaRow: { flexDirection: "row", gap: 12, marginTop: 9 },
+  trainersMeta: { fontFamily: systemFont, fontSize: 10, fontWeight: "800" },
+  trainersProfileLink: { flexDirection: "row", alignItems: "center", gap: 2, marginTop: 10 },
   infoHead: {
     flexDirection: "row",
     alignItems: "center",

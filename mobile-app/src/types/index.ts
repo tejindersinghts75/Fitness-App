@@ -7,5 +7,5 @@ export type RootStackParamList = {
   Splash: undefined; Welcome: undefined; Login: undefined; Register: undefined; VerifyEmailOtp: { email: string; mode: 'signup' | 'login' };
   Main: undefined; PlanDetails: { planId: string }; Checkout: { planId: string }; PaymentSuccess: { planId: string };
   PaymentFailed: { planId: string }; VideoDetails: { videoId: string }; LockedContent: { videoId: string };
-  EditProfile: undefined; MySubscription: undefined; Plans: undefined; CategoryVideos: { category: string }; CoachProfile: { coachId: string };
+  EditProfile: undefined; MySubscription: undefined; Plans: undefined; Trainers: undefined; CategoryVideos: { category: string }; CoachProfile: { coachId: string };
 };

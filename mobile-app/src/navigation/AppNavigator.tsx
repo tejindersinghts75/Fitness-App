@@ -8,7 +8,7 @@ import { useAppTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { LoginScreen, RegisterScreen, SplashScreen, VerifyEmailOtpScreen, WelcomeScreen } from '../screens/AuthScreens';
 import { CheckoutScreen, EditProfileScreen, LockedContentScreen, PaymentFailedScreen, PaymentSuccessScreen, PlanDetailsScreen, VideoDetailsScreen } from '../screens/DetailScreens';
-import { CategoryVideosScreen, CoachProfileScreen, ExploreScreen, HomeScreen, PlansScreen, ProgressScreen, SubscriptionScreen } from '../screens/MainScreens';
+import { CategoryVideosScreen, CoachProfileScreen, ExploreScreen, HomeScreen, PlansScreen, ProgressScreen, SubscriptionScreen, TrainersScreen } from '../screens/MainScreens';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { RootStackParamList } from '../types';
 
@@ -96,7 +96,7 @@ export const AppNavigator = () => {
   const navTheme = { ...base, colors: { ...base.colors, background: theme.background, card: theme.surface, text: theme.text, border: theme.border, primary: theme.accent } };
   if (loading) return <SplashScreen/>;
   return <NavigationContainer theme={navTheme}>{session ? <Stack.Navigator key="app" screenOptions={{ headerShown: false, animation: 'slide_from_right' }} initialRouteName="Main">
-    <Stack.Screen name="Main" component={MainTabs}/><Stack.Screen name="MySubscription" component={SubscriptionScreen}/><Stack.Screen name="Plans" component={PlansScreen}/><Stack.Screen name="CategoryVideos" component={CategoryVideosScreen}/><Stack.Screen name="CoachProfile" component={CoachProfileScreen}/><Stack.Screen name="PlanDetails" component={PlanDetailsScreen}/><Stack.Screen name="Checkout" component={CheckoutScreen}/><Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen}/><Stack.Screen name="PaymentFailed" component={PaymentFailedScreen}/><Stack.Screen name="VideoDetails" component={VideoDetailsScreen}/><Stack.Screen name="LockedContent" component={LockedContentScreen}/><Stack.Screen name="EditProfile" component={EditProfileScreen}/>
+    <Stack.Screen name="Main" component={MainTabs}/><Stack.Screen name="MySubscription" component={SubscriptionScreen}/><Stack.Screen name="Plans" component={PlansScreen}/><Stack.Screen name="Trainers" component={TrainersScreen}/><Stack.Screen name="CategoryVideos" component={CategoryVideosScreen}/><Stack.Screen name="CoachProfile" component={CoachProfileScreen}/><Stack.Screen name="PlanDetails" component={PlanDetailsScreen}/><Stack.Screen name="Checkout" component={CheckoutScreen}/><Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen}/><Stack.Screen name="PaymentFailed" component={PaymentFailedScreen}/><Stack.Screen name="VideoDetails" component={VideoDetailsScreen}/><Stack.Screen name="LockedContent" component={LockedContentScreen}/><Stack.Screen name="EditProfile" component={EditProfileScreen}/>
   </Stack.Navigator> : <Stack.Navigator key="auth" screenOptions={{ headerShown: false, animation: 'slide_from_right' }} initialRouteName="Welcome">
     <Stack.Screen name="Welcome" component={WelcomeScreen}/><Stack.Screen name="Login" component={LoginScreen}/><Stack.Screen name="Register" component={RegisterScreen}/><Stack.Screen name="VerifyEmailOtp" component={VerifyEmailOtpScreen}/>
   </Stack.Navigator>}</NavigationContainer>;
