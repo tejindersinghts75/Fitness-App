@@ -776,7 +776,6 @@ export const CoachProfileScreen = ({ navigation, route }: CoachProfileProps) => 
           </View>
         </View>
 
-        <AppButton title="Explore training plans" onPress={() => navigation.navigate("Plans")} />
       </ScrollView>
     </SafeAreaView>
   );
