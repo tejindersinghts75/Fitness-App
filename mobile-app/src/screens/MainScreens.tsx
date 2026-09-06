@@ -163,7 +163,7 @@ export const HomeScreen = () => {
             <Image source={trainerImage} style={s.userPhoto} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.muted, fontSize: 13 }}>
+            <Text numberOfLines={1} style={{ color: theme.muted, fontSize: 12 }}>
               {isPremium ? "Welcome back, premium member" : "Welcome back"}
             </Text>
             <View style={s.welcomeNameRow}>
@@ -1165,7 +1165,7 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 4,
   },
-  welcomeUser: { flexDirection: "row", alignItems: "center", gap: 11 },
+  welcomeUser: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 11, paddingRight: 10 },
   profileTapTarget: {
     width: 56,
     height: 56,
@@ -1176,11 +1176,12 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   userPhoto: { width: 44, height: 44, borderRadius: 16 },
-  welcomeName: { fontSize: 23, fontWeight: "900", letterSpacing: -0.5 },
-  welcomeNameRow: { flexDirection: "row", alignItems: "center", gap: 8, maxWidth: 230 },
-  memberBadge: { height: 22, borderRadius: 99, paddingHorizontal: 8, flexDirection: "row", alignItems: "center", gap: 4 },
+  welcomeName: { flexShrink: 1, fontSize: 23, fontWeight: "900", letterSpacing: -0.5 },
+  welcomeNameRow: { minWidth: 0, flexDirection: "row", alignItems: "center", gap: 7 },
+  memberBadge: { flexShrink: 0, height: 22, borderRadius: 99, paddingHorizontal: 8, flexDirection: "row", alignItems: "center", gap: 4 },
   memberBadgeText: { fontSize: 8, lineHeight: 10, fontWeight: "900", letterSpacing: .55 },
   iconButton: {
+    flexShrink: 0,
     width: 44,
     height: 44,
     borderRadius: 16,
