@@ -43,11 +43,11 @@ const CompactTabBar = ({ state, navigation }: BottomTabBarProps) => {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.accent,
     borderWidth: 1,
-    borderColor: '#EEEEEA',
-    shadowColor: '#000000',
-    shadowOpacity: .12,
+    borderColor: theme.accent,
+    shadowColor: theme.accent,
+    shadowOpacity: .26,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 7 },
     elevation: 10,
@@ -71,12 +71,12 @@ const CompactTabBar = ({ state, navigation }: BottomTabBarProps) => {
           borderRadius: 25,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: selected ? theme.accent : 'transparent',
+          backgroundColor: selected ? '#FFFFFF' : 'transparent',
           opacity: pressed ? .72 : 1,
         })}
       >
-        <Ionicons name={(selected ? meta.on : meta.off) as any} color={selected ? '#FFFFFF' : '#7D7D78'} size={21}/>
-        <Text style={{ color: selected ? '#FFFFFF' : '#7D7D78', fontSize: 8, lineHeight: 10, fontWeight: '800', marginTop: 2 }}>
+        <Ionicons name={(selected ? meta.on : meta.off) as any} color={selected ? theme.accent : '#FFFFFF'} size={21}/>
+        <Text style={{ color: selected ? theme.accent : '#FFFFFF', fontSize: 8, lineHeight: 10, fontWeight: '800', marginTop: 2 }}>
           {meta.label}
         </Text>
       </Pressable>;
