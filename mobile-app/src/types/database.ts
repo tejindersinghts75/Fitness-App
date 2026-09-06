@@ -22,8 +22,8 @@ export type Database = {
         Relationships: [];
       };
       coaches: {
-        Row: { id: string; slug: string; name: string; specialty: string; bio: string; experience_years: number; rating: number; clients_count: number; expertise: string[]; photo_url: string; photo_path: string; is_active: boolean; sort_order: number; created_at: string; updated_at: string };
-        Insert: { id?: string; slug: string; name: string; specialty: string; bio?: string; experience_years?: number; rating?: number; clients_count?: number; expertise?: string[]; photo_url: string; photo_path: string; is_active?: boolean; sort_order?: number; created_at?: string; updated_at?: string };
+        Row: { id: string; slug: string; name: string; specialty: string; bio: string; experience_years: number; rating: number; clients_count: number; expertise: string[]; photo_url: string; photo_path: string; booking_url: string | null; is_active: boolean; sort_order: number; created_at: string; updated_at: string };
+        Insert: { id?: string; slug: string; name: string; specialty: string; bio?: string; experience_years?: number; rating?: number; clients_count?: number; expertise?: string[]; photo_url: string; photo_path: string; booking_url?: string | null; is_active?: boolean; sort_order?: number; created_at?: string; updated_at?: string };
         Update: Partial<Database['public']['Tables']['coaches']['Insert']>;
         Relationships: [];
       };

@@ -8,6 +8,7 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Image,
   ImageBackground,
+  Linking,
   Platform,
   Pressable,
   RefreshControl,
@@ -766,7 +767,7 @@ export const CoachProfileScreen = ({ navigation, route }: CoachProfileProps) => 
           </View>
         </View>
 
-        <View style={[s.coachApproachCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View style={[s.coachApproachCard, { backgroundColor: theme.surface, borderColor: theme.border }]}> 
           <View style={[s.coachApproachIcon, { backgroundColor: theme.accentSoft }]}>
             <Ionicons name="sparkles" size={21} color={theme.accent} />
           </View>
@@ -775,6 +776,14 @@ export const CoachProfileScreen = ({ navigation, route }: CoachProfileProps) => 
             <Text style={[s.coachApproachCopy, { color: theme.muted }]}>Supportive, goal-focused sessions with clear guidance and progress you can measure.</Text>
           </View>
         </View>
+
+        {coach.bookingUrl && (
+          <AppButton
+            title="Book consultation"
+            icon="calendar-outline"
+            onPress={() => Linking.openURL(coach.bookingUrl!).catch(() => undefined)}
+          />
+        )}
 
       </ScrollView>
     </SafeAreaView>

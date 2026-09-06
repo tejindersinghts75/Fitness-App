@@ -39,6 +39,7 @@ type CoachItem = {
   expertise: string[];
   photo_url: string;
   photo_path: string;
+  booking_url: string | null;
   is_active: boolean;
   sort_order: number;
 };
@@ -326,6 +327,7 @@ export default function AdminPortal() {
       expertise,
       photo_url: publicPhoto.publicUrl,
       photo_path: photoPath,
+      booking_url: String(data.get("bookingUrl") || "").trim() || null,
       is_active: data.get("active") === "on",
       sort_order: coaches.length + 1,
     });
@@ -346,6 +348,24 @@ export default function AdminPortal() {
     const { error: updateError } = await supabase.from("coaches").update({ is_active: !coach.is_active }).eq("id", coach.id);
     if (updateError) return setError(updateError.message);
     setNotice(`${coach.name} is now ${coach.is_active ? "hidden from" : "visible in"} the mobile app.`);
+    await refresh();
+  }
+
+  async function updateCoachBookingUrl(coach: CoachItem, bookingUrl: string) {
+    const value = bookingUrl.trim();
+    if (value && !/^https:\/\//i.test(value)) {
+      setError("The booking link must start with https://");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    const { error: updateError } = await supabase
+      .from("coaches")
+      .update({ booking_url: value || null })
+      .eq("id", coach.id);
+    setBusy(false);
+    if (updateError) return setError(updateError.message);
+    setNotice(value ? `${coach.name}'s consultation link was saved.` : `${coach.name}'s consultation link was removed.`);
     await refresh();
   }
 
@@ -739,6 +759,17 @@ export default function AdminPortal() {
                     <div className="coach-tags">
                       {coach.expertise.slice(0, 3).map((item) => <span key={item}>{item}</span>)}
                     </div>
+                    <form
+                      className="coach-booking-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        const data = new FormData(event.currentTarget);
+                        void updateCoachBookingUrl(coach, String(data.get("bookingUrl") || ""));
+                      }}
+                    >
+                      <input name="bookingUrl" type="url" defaultValue={coach.booking_url || ""} placeholder="https://calendly.com/coach/consultation" aria-label={`${coach.name} booking link`} />
+                      <button className="secondary" disabled={busy}>Save link</button>
+                    </form>
                     <div className="coach-actions">
                       <button className="secondary" onClick={() => void toggleCoach(coach)}>
                         {coach.is_active ? "Hide" : "Publish"}
@@ -871,6 +902,7 @@ export default function AdminPortal() {
                 <label>Clients coached<input name="clients" type="number" min="0" defaultValue="0" required /></label>
               </div>
               <label>Expertise<input name="expertise" required placeholder="Strength training, Form coaching, Mobility" /><small>Separate each skill with a comma.</small></label>
+              <label>Calendly booking link<input name="bookingUrl" type="url" placeholder="https://calendly.com/coach/consultation" /><small>You can add or change this later from the trainer card.</small></label>
               <label className="toggle"><input name="active" type="checkbox" defaultChecked /><span />Publish in the mobile app</label>
               <footer>
                 <button type="button" className="secondary" onClick={() => setShowCoachForm(false)}>Cancel</button>

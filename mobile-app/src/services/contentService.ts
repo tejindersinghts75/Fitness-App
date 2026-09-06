@@ -58,6 +58,7 @@ const mapCoach = (row: CoachRow): Coach => ({
   clientsCount: row.clients_count,
   expertise: row.expertise || [],
   photoUrl: row.photo_url,
+  bookingUrl: row.booking_url,
   sortOrder: row.sort_order,
 });
 
