@@ -108,6 +108,10 @@ export const HomeScreen = () => {
   const workoutSlideGap = 12;
   const workoutSnapInterval = workoutCardWidth + workoutSlideGap;
   const workoutSliderRef = useRef<ScrollView>(null);
+  const openTrainers = useCallback(() => {
+    const stackNavigation = nav.getParent<Nav>();
+    (stackNavigation || nav).navigate("Trainers");
+  }, [nav]);
   const [activeWorkoutSlide, setActiveWorkoutSlide] = useState(0);
   const [selectedScheduleDay, setSelectedScheduleDay] = useState(0);
   const scheduleDays = useMemo(
@@ -447,7 +451,7 @@ export const HomeScreen = () => {
       </View>
 
       {coaches.length > 0 && <>
-      <SectionHeader title="Your trainers" action="See all" onPress={() => nav.navigate("Trainers")} />
+      <SectionHeader title="Your trainers" action="See all" onPress={openTrainers} />
       <ScrollView
         horizontal
         pagingEnabled
