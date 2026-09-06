@@ -103,7 +103,14 @@ export const HomeScreen = () => {
   const { profile, user } = useAuth();
   const nav = useNavigation<Nav>();
   const { width } = useWindowDimensions();
-  const { videos, coaches } = useCatalog();
+  const { videos, coaches, plans, subscriptions } = useCatalog();
+  const activeSubscription = subscriptions.find(
+    (item) => item.status === "active" && new Date(item.expiresAt).getTime() > Date.now(),
+  );
+  const activePlan = activeSubscription
+    ? plans.find((plan) => plan.id === activeSubscription.packageId)
+    : undefined;
+  const isPremium = Boolean(activeSubscription);
   const featured = videos[0];
   const workoutCardWidth = width - 40;
   const workoutSlideGap = 12;
@@ -155,13 +162,17 @@ export const HomeScreen = () => {
           >
             <Image source={trainerImage} style={s.userPhoto} />
           </Pressable>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={{ color: theme.muted, fontSize: 13 }}>
-              Welcome back
+              {isPremium ? "Welcome back, premium member" : "Welcome back"}
             </Text>
-            <Text style={[s.welcomeName, { color: theme.text }]}>
-              {firstName}
-            </Text>
+            <View style={s.welcomeNameRow}>
+              <Text numberOfLines={1} style={[s.welcomeName, { color: theme.text }]}>{firstName}</Text>
+              <View style={[s.memberBadge, { backgroundColor: isPremium ? theme.accent : theme.surfaceAlt }]}>
+                <Ionicons name={isPremium ? "diamond" : "person-outline"} size={10} color={isPremium ? "#FFFFFF" : theme.muted} />
+                <Text style={[s.memberBadgeText, { color: isPremium ? "#FFFFFF" : theme.muted }]}>{isPremium ? "PREMIUM" : "FREE"}</Text>
+              </View>
+            </View>
           </View>
         </View>
         <Pressable
@@ -219,11 +230,11 @@ export const HomeScreen = () => {
           style={s.goalBannerInnerTop}
         />
         <View style={s.goalBannerCopy}>
-          <Text style={[s.goalBannerEyebrow, { color: "#FFFFFF" }]}>YOUR NEXT LEVEL</Text>
-          <Text style={[s.goalBannerTitle, { color: "#FFFFFF" }]}>STRONGER{"\n"}UNSTOPPABLE</Text>
+          <Text style={[s.goalBannerEyebrow, { color: "#FFFFFF" }]}>{isPremium ? "PREMIUM ACCESS" : "YOUR NEXT LEVEL"}</Text>
+          <Text style={[s.goalBannerTitle, { color: "#FFFFFF" }]}>{isPremium ? `${activePlan?.name || "FITORA"}\nACTIVE` : "STRONGER\nUNSTOPPABLE"}</Text>
         </View>
         <Pressable
-          onPress={() => nav.navigate("Plans")}
+          onPress={() => nav.navigate(isPremium ? "MySubscription" : "Plans")}
           style={({ pressed }) => [
             s.goalBannerButton,
             {
@@ -245,7 +256,7 @@ export const HomeScreen = () => {
           >
             <BlurView intensity={42} tint="light" style={StyleSheet.absoluteFill} />
             <View style={s.goalBannerButtonGloss} />
-            <Text style={s.goalBannerButtonText}>Explore plans</Text>
+            <Text style={s.goalBannerButtonText}>{isPremium ? "View membership" : "Explore plans"}</Text>
           </LinearGradient>
         </Pressable>
       </View>
@@ -1166,6 +1177,9 @@ const s = StyleSheet.create({
   },
   userPhoto: { width: 44, height: 44, borderRadius: 16 },
   welcomeName: { fontSize: 23, fontWeight: "900", letterSpacing: -0.5 },
+  welcomeNameRow: { flexDirection: "row", alignItems: "center", gap: 8, maxWidth: 230 },
+  memberBadge: { height: 22, borderRadius: 99, paddingHorizontal: 8, flexDirection: "row", alignItems: "center", gap: 4 },
+  memberBadgeText: { fontSize: 8, lineHeight: 10, fontWeight: "900", letterSpacing: .55 },
   iconButton: {
     width: 44,
     height: 44,

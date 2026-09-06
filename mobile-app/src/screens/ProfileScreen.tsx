@@ -18,10 +18,11 @@ export const ProfileScreen = () => {
   const { plans, subscriptions } = useCatalog();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Member';
-  const activeNames = subscriptions
-    .filter(item => item.status === 'active' && new Date(item.expiresAt).getTime() > Date.now())
-    .map(item => plans.find(plan => plan.id === item.packageId)?.name)
-    .filter(Boolean) as string[];
+  const activeSubscriptions = subscriptions.filter(item => item.status === 'active' && new Date(item.expiresAt).getTime() > Date.now());
+  const primarySubscription = activeSubscriptions[0];
+  const primaryPlan = primarySubscription ? plans.find(plan => plan.id === primarySubscription.packageId) : undefined;
+  const activeNames = activeSubscriptions.map(item => plans.find(plan => plan.id === item.packageId)?.name).filter(Boolean) as string[];
+  const isPremium = activeSubscriptions.length > 0;
   const accountItems = [
     { icon: 'person-outline', label: 'Personal information', detail: 'Name, email and phone', onPress: () => nav.navigate('EditProfile') },
     { icon: 'card-outline', label: 'My subscription', detail: activeNames.length ? activeNames.join(', ') : 'Choose your training plan', onPress: () => nav.navigate('MySubscription') },
@@ -38,7 +39,13 @@ export const ProfileScreen = () => {
               <View style={s.onlineDot} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text numberOfLines={1} style={[s.name, { color: theme.text }]}>{displayName}</Text>
+              <View style={s.nameRow}>
+                <Text numberOfLines={1} style={[s.name, { color: theme.text }]}>{displayName}</Text>
+                <View style={[s.tierBadge, { backgroundColor: isPremium ? theme.accent : theme.surfaceAlt }]}>
+                  <Ionicons name={isPremium ? 'diamond' : 'person-outline'} size={9} color={isPremium ? '#FFFFFF' : theme.muted} />
+                  <Text style={[s.tierBadgeText, { color: isPremium ? '#FFFFFF' : theme.muted }]}>{isPremium ? 'PREMIUM' : 'FREE'}</Text>
+                </View>
+              </View>
               <Text numberOfLines={1} style={[s.email, { color: theme.muted }]}>{profile?.email || user?.email}</Text>
             </View>
             <Pressable
@@ -55,15 +62,19 @@ export const ProfileScreen = () => {
         <Pressable
           accessibilityRole="button"
           onPress={() => nav.navigate(activeNames.length ? 'MySubscription' : 'Plans')}
-          style={({ pressed }) => [s.membershipCard, { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? .68 : 1 }]}
+          style={({ pressed }) => [s.membershipCard, { backgroundColor: isPremium ? '#171714' : theme.surface, borderColor: isPremium ? '#2E2E29' : theme.border, opacity: pressed ? .68 : 1 }]}
         >
-          <View style={[s.membershipIcon, { backgroundColor: theme.accentSoft }]}>
-            <Ionicons name={activeNames.length ? 'checkmark' : 'sparkles'} size={21} color={theme.accent} />
+          <View style={[s.membershipIcon, { backgroundColor: isPremium ? theme.accent : theme.accentSoft }]}>
+            <Ionicons name={isPremium ? 'diamond' : 'sparkles'} size={21} color={isPremium ? '#FFFFFF' : theme.accent} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[s.membershipEyebrow, { color: theme.accent }]}>MEMBERSHIP</Text>
-            <Text style={[s.membershipName, { color: theme.text }]}>{activeNames.length ? activeNames[0] : 'Choose your training plan'}</Text>
-            {!activeNames.length && <Text style={[s.membershipDescription, { color: theme.muted }]}>Unlock guided workouts built for your goal.</Text>}
+            <Text style={[s.membershipName, { color: isPremium ? '#FFFFFF' : theme.text }]}>{isPremium ? primaryPlan?.name || 'Premium access' : 'Unlock Fitora Premium'}</Text>
+            {isPremium && primarySubscription ? (
+              <Text style={s.premiumExpiry}>Active until {new Date(primarySubscription.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+            ) : (
+              <Text style={[s.membershipDescription, { color: theme.muted }]}>Complete programs, progress tracking and expert guidance.</Text>
+            )}
           </View>
           <View style={[s.membershipArrow, { backgroundColor: theme.accent }]}>
             <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
@@ -135,6 +146,9 @@ const s = StyleSheet.create({
   avatar: { width: '100%', height: '100%', borderRadius: 20 },
   onlineDot: { position: 'absolute', right: 1, bottom: 1, width: 17, height: 17, borderRadius: 9, backgroundColor: '#31C878', borderWidth: 3, borderColor: '#FFFFFF' },
   name: { fontSize: 20, lineHeight: 25, fontWeight: '900', letterSpacing: -.35 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  tierBadge: { height: 21, borderRadius: 99, paddingHorizontal: 7, flexDirection: 'row', alignItems: 'center', gap: 3 },
+  tierBadgeText: { fontSize: 7, lineHeight: 9, fontWeight: '900', letterSpacing: .45 },
   email: { fontSize: 10, lineHeight: 14, marginTop: 3 },
   editButton: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   membershipCard: { minHeight: 96, borderRadius: 22, borderWidth: 1, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -142,6 +156,7 @@ const s = StyleSheet.create({
   membershipEyebrow: { fontSize: 8, lineHeight: 11, fontWeight: '900', letterSpacing: 1.2 },
   membershipName: { fontSize: 14, lineHeight: 18, fontWeight: '900', marginTop: 2 },
   membershipDescription: { fontSize: 9, lineHeight: 13, marginTop: 3 },
+  premiumExpiry: { color: 'rgba(255,255,255,.68)', fontSize: 9, lineHeight: 13, marginTop: 3 },
   membershipArrow: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   section: { gap: 10 },
   sectionTitle: { fontSize: 18, lineHeight: 23, fontWeight: '900', letterSpacing: -.25 },
