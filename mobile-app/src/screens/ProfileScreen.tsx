@@ -38,7 +38,7 @@ export const ProfileScreen = () => {
               <Image source={profilePhoto} style={s.avatar} />
               <View style={s.onlineDot} />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={s.identityContent}>
               <View style={s.nameRow}>
                 <Text numberOfLines={1} style={[s.name, { color: theme.text }]}>{displayName}</Text>
                 <View style={[s.tierBadge, { backgroundColor: isPremium ? theme.accent : theme.surfaceAlt }]}>
@@ -147,12 +147,13 @@ const s = StyleSheet.create({
   avatarFrame: { width: 72, height: 72, borderRadius: 23, backgroundColor: '#FFFFFF', padding: 3, borderWidth: 1 },
   avatar: { width: '100%', height: '100%', borderRadius: 20 },
   onlineDot: { position: 'absolute', right: 1, bottom: 1, width: 17, height: 17, borderRadius: 9, backgroundColor: '#31C878', borderWidth: 3, borderColor: '#FFFFFF' },
-  name: { fontSize: 20, lineHeight: 25, fontWeight: '900', letterSpacing: -.35 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  tierBadge: { height: 21, borderRadius: 99, paddingHorizontal: 7, flexDirection: 'row', alignItems: 'center', gap: 3 },
+  identityContent: { flex: 1, minWidth: 0 },
+  name: { flexShrink: 1, fontSize: 20, lineHeight: 25, fontWeight: '900', letterSpacing: -.35 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7, minWidth: 0 },
+  tierBadge: { flexShrink: 0, height: 21, borderRadius: 99, paddingHorizontal: 7, flexDirection: 'row', alignItems: 'center', gap: 3 },
   tierBadgeText: { fontSize: 7, lineHeight: 9, fontWeight: '900', letterSpacing: .45 },
   email: { fontSize: 10, lineHeight: 14, marginTop: 3 },
-  editButton: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  editButton: { flexShrink: 0, width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   membershipCard: { minHeight: 96, borderRadius: 22, borderWidth: 1, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   membershipIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   membershipEyebrow: { fontSize: 8, lineHeight: 11, fontWeight: '900', letterSpacing: 1.2 },
