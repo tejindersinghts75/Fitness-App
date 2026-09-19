@@ -75,11 +75,16 @@ async function calendlyFetch<T>(pathOrUrl: string, token: string): Promise<T> {
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const requiredScopes = Array.isArray(body?.details?.required_scopes)
+      ? body.details.required_scopes.join(", ")
+      : Array.isArray(body?.required_scopes)
+        ? body.required_scopes.join(", ")
+        : "";
     const message =
       typeof body?.message === "string"
         ? body.message
         : `Calendly request failed with ${response.status}`;
-    throw new Error(message);
+    throw new Error(requiredScopes ? `${message} Missing scopes: ${requiredScopes}` : message);
   }
   return body as T;
 }
