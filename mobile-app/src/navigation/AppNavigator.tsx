@@ -95,9 +95,9 @@ export const AppNavigator = () => {
   const { theme } = useAppTheme(); const { session, loading } = useAuth(); const base = theme.dark ? DarkTheme : DefaultTheme;
   const navTheme = { ...base, colors: { ...base.colors, background: theme.background, card: theme.surface, text: theme.text, border: theme.border, primary: theme.accent } };
   if (loading) return <SplashScreen/>;
-  return <NavigationContainer theme={navTheme}>{session ? <Stack.Navigator key="app" screenOptions={{ headerShown: false, animation: 'slide_from_right' }} initialRouteName="Main">
+  return <NavigationContainer theme={navTheme}>{session ? <Stack.Navigator key="app" screenOptions={{ headerShown: false, animation: 'none' }} initialRouteName="Main">
     <Stack.Screen name="Main" component={MainTabs}/><Stack.Screen name="MySubscription" component={SubscriptionScreen}/><Stack.Screen name="Plans" component={PlansScreen}/><Stack.Screen name="Trainers" component={TrainersScreen}/><Stack.Screen name="CategoryVideos" component={CategoryVideosScreen}/><Stack.Screen name="CoachProfile" component={CoachProfileScreen}/><Stack.Screen name="PlanDetails" component={PlanDetailsScreen}/><Stack.Screen name="Checkout" component={CheckoutScreen}/><Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen}/><Stack.Screen name="PaymentFailed" component={PaymentFailedScreen}/><Stack.Screen name="VideoDetails" component={VideoDetailsScreen}/><Stack.Screen name="LockedContent" component={LockedContentScreen}/><Stack.Screen name="EditProfile" component={EditProfileScreen}/>
-  </Stack.Navigator> : <Stack.Navigator key="auth" screenOptions={{ headerShown: false, animation: 'slide_from_right' }} initialRouteName="Welcome">
+  </Stack.Navigator> : <Stack.Navigator key="auth" screenOptions={{ headerShown: false, animation: 'none' }} initialRouteName="Welcome">
     <Stack.Screen name="Welcome" component={WelcomeScreen}/><Stack.Screen name="Login" component={LoginScreen}/><Stack.Screen name="Register" component={RegisterScreen}/><Stack.Screen name="VerifyEmailOtp" component={VerifyEmailOtpScreen}/>
   </Stack.Navigator>}</NavigationContainer>;
 };

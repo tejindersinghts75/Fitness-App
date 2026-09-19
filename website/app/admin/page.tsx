@@ -27,7 +27,8 @@ type VideoItem = {
   is_published: boolean;
   error_message: string | null;
 };
-type AdminSection = "packages" | "videos" | "coaches" | "subscriptions" | "users";
+type MembershipItem = { id: string; name: string; slug: string; description: string; price_inr: number; duration_days: number; trial_days: number; features: string[]; badge: string | null; savings_label: string | null; is_popular: boolean; is_active: boolean; sort_order: number };
+type AdminSection = "memberships" | "packages" | "videos" | "coaches" | "calls" | "subscriptions" | "users";
 type CoachItem = {
   id: string;
   name: string;
@@ -50,7 +51,7 @@ type SubscriptionItem = {
   expires_at: string;
   payment_provider: string;
   user_id: string;
-  packages: { name: string } | null;
+  membership_plans: { name: string } | null;
 };
 type ProfileItem = {
   id: string;
@@ -58,6 +59,18 @@ type ProfileItem = {
   email: string;
   phone: string | null;
   created_at: string;
+};
+type ScheduledCallItem = {
+  id: string;
+  user_id: string;
+  coach_id: string | null;
+  coach_name: string;
+  title: string;
+  starts_at: string;
+  ends_at: string | null;
+  status: "scheduled" | "completed" | "cancelled";
+  meeting_url: string | null;
+  provider: string;
 };
 const money = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -213,12 +226,14 @@ export default function AdminPortal() {
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [packages, setPackages] = useState<PackageItem[]>([]);
+  const [memberships, setMemberships] = useState<MembershipItem[]>([]);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [coaches, setCoaches] = useState<CoachItem[]>([]);
   const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [showCoachForm, setShowCoachForm] = useState(false);
   const [selected, setSelected] = useState<PackageItem | null>(null);
+  const [selectedMembership, setSelectedMembership] = useState<MembershipItem | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -227,6 +242,7 @@ export default function AdminPortal() {
     useState<AdminSection>("packages");
   const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>([]);
   const [users, setUsers] = useState<ProfileItem[]>([]);
+  const [scheduledCalls, setScheduledCalls] = useState<ScheduledCallItem[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const coachPhotoRef = useRef<HTMLInputElement>(null);
   const filtered = useMemo(
@@ -274,16 +290,18 @@ export default function AdminPortal() {
     if (authorized) void refresh();
   }, [authorized]);
   async function refresh() {
-    const [{ data: p, error: pe }, { data: v, error: ve }, { data: c, error: ce }] = await Promise.all([
+    const [{ data: p, error: pe }, { data: m, error: me }, { data: v, error: ve }, { data: c, error: ce }] = await Promise.all([
       supabase.from("packages").select("*").order("sort_order"),
+      supabase.from("membership_plans").select("*").order("sort_order"),
       supabase.from("videos").select("*").order("sort_order"),
       supabase.from("coaches").select("*").order("sort_order"),
     ]);
-    if (pe || ve || ce) {
-      setError(pe?.message || ve?.message || ce?.message || "Unable to load content");
+    if (pe || me || ve || ce) {
+      setError(pe?.message || me?.message || ve?.message || ce?.message || "Unable to load content");
       return;
     }
     setPackages((p || []) as PackageItem[]);
+    setMemberships((m || []) as MembershipItem[]);
     setVideos((v || []) as VideoItem[]);
     setCoaches((c || []) as CoachItem[]);
   }
@@ -378,10 +396,82 @@ export default function AdminPortal() {
     setNotice(`${coach.name} was removed.`);
     await refresh();
   }
+  async function createScheduledCall(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const userId = String(data.get("userId") || "");
+    const coachId = String(data.get("coachId") || "");
+    const coach = coaches.find((item) => item.id === coachId);
+    const startsAt = String(data.get("startsAt") || "");
+    const meetingUrl = String(data.get("meetingUrl") || "").trim();
+    if (!userId || !coach || !startsAt) {
+      setError("Choose a user, trainer and call date/time.");
+      return;
+    }
+    if (meetingUrl && !/^https:\/\//i.test(meetingUrl)) {
+      setError("Meeting link must start with https://");
+      return;
+    }
+    const startDate = new Date(startsAt);
+    const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+    setBusy(true);
+    setError("");
+    const { error: insertError } = await supabase.from("scheduled_calls").insert({
+      user_id: userId,
+      coach_id: coach.id,
+      coach_name: coach.name,
+      title: String(data.get("title") || "Consultation call").trim() || "Consultation call",
+      starts_at: startDate.toISOString(),
+      ends_at: endDate.toISOString(),
+      meeting_url: meetingUrl || null,
+      provider: "admin",
+      status: "scheduled",
+    });
+    setBusy(false);
+    if (insertError) return setError(insertError.message);
+    form.reset();
+    setNotice(`Call scheduled with Coach ${coach.name}.`);
+    await loadAdminOverview("calls");
+  }
+  async function updateScheduledCallStatus(call: ScheduledCallItem, status: "scheduled" | "completed" | "cancelled") {
+    setBusy(true);
+    setError("");
+    const { error: updateError } = await supabase
+      .from("scheduled_calls")
+      .update({ status })
+      .eq("id", call.id);
+    setBusy(false);
+    if (updateError) return setError(updateError.message);
+    setNotice(`Call marked ${status}.`);
+    await loadAdminOverview("calls");
+  }
+  async function syncCalendlyCalls() {
+    if (!session) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/calendly/sync", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.error || "Unable to sync Calendly calls");
+      setNotice(
+        `Calendly synced: ${result.synced || 0} calls saved${result.skipped ? `, ${result.skipped} skipped because the email is not a Fitora user` : ""}.`,
+      );
+      await loadAdminOverview("calls");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to sync Calendly calls");
+    } finally {
+      setBusy(false);
+    }
+  }
   async function loadAdminOverview(section: AdminSection) {
     setActiveSection(section);
     setError("");
-    if ((section !== "subscriptions" && section !== "users") || !session)
+    if ((section !== "subscriptions" && section !== "users" && section !== "calls") || !session)
       return;
     setBusy(true);
     try {
@@ -393,6 +483,7 @@ export default function AdminPortal() {
         throw new Error(result.error || "Unable to load admin data");
       setSubscriptions(result.subscriptions || []);
       setUsers(result.users || []);
+      setScheduledCalls(result.scheduledCalls || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to load admin data");
     } finally {
@@ -422,6 +513,47 @@ export default function AdminPortal() {
     }
     setShowForm(false);
     setNotice(`${name} is now available in the shared catalog.`);
+    await refresh();
+  }
+  async function createMembership(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true); setError("");
+    const form = event.currentTarget; const data = new FormData(form);
+    const name = String(data.get("name") || "").trim();
+    const features = String(data.get("features") || "").split("\n").map(x => x.trim()).filter(Boolean);
+    const { error: e } = await supabase.from("membership_plans").insert({
+      name, slug: `${slugify(name)}-${Date.now().toString().slice(-5)}`,
+      description: String(data.get("description") || ""), price_inr: Number(data.get("price") || 0),
+      duration_days: Number(data.get("duration") || 30), trial_days: Number(data.get("trial") || 0),
+      features, badge: String(data.get("badge") || "").trim() || null,
+      savings_label: String(data.get("savings") || "").trim() || null,
+      is_popular: data.get("popular") === "on", is_active: data.get("active") === "on", sort_order: memberships.length + 1,
+    });
+    setBusy(false); if (e) return setError(e.message);
+    form.reset(); setNotice(`${name} membership is now synced with the mobile app.`); await refresh();
+  }
+  async function updateMembership(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedMembership) return;
+    setBusy(true); setError("");
+    const data = new FormData(event.currentTarget);
+    const name = String(data.get("name") || "").trim();
+    const features = String(data.get("features") || "").split("\n").map((item) => item.trim()).filter(Boolean);
+    const { error: e } = await supabase.from("membership_plans").update({
+      name,
+      description: String(data.get("description") || ""),
+      price_inr: Number(data.get("price") || 0),
+      duration_days: Number(data.get("duration") || 30),
+      trial_days: Number(data.get("trial") || 0),
+      features,
+      badge: String(data.get("badge") || "").trim() || null,
+      savings_label: String(data.get("savings") || "").trim() || null,
+      is_popular: data.get("popular") === "on",
+      is_active: data.get("active") === "on",
+    }).eq("id", selectedMembership.id);
+    setBusy(false);
+    if (e) return setError(e.message);
+    setSelectedMembership(null);
+    setNotice(`${name} was updated. The mobile app will use the new details on refresh.`);
     await refresh();
   }
   async function uploadVideo(event: FormEvent<HTMLFormElement>) {
@@ -566,11 +698,14 @@ export default function AdminPortal() {
           </div>
         </Link>
         <nav aria-label="Admin navigation">
+          <button className={`nav-item ${activeSection === "memberships" ? "active" : ""}`} onClick={() => void loadAdminOverview("memberships")}>
+            <span>◇</span>Memberships
+          </button>
           <button
             className={`nav-item ${activeSection === "packages" ? "active" : ""}`}
             onClick={() => void loadAdminOverview("packages")}
           >
-            <span>▦</span>Packages
+            <span>▦</span>Programs
           </button>
           <button
             className={`nav-item ${activeSection === "videos" ? "active" : ""}`}
@@ -583,6 +718,12 @@ export default function AdminPortal() {
             onClick={() => void loadAdminOverview("coaches")}
           >
             <span>♟</span>Trainers
+          </button>
+          <button
+            className={`nav-item ${activeSection === "calls" ? "active" : ""}`}
+            onClick={() => void loadAdminOverview("calls")}
+          >
+            <span>☎</span>Calls
           </button>
           <button
             className={`nav-item ${activeSection === "subscriptions" ? "active" : ""}`}
@@ -616,7 +757,7 @@ export default function AdminPortal() {
           </div>
           {activeSection === "packages" && (
             <button className="primary" onClick={() => setShowForm(true)}>
-              ＋ Create package
+              ＋ Create program
             </button>
           )}
           {activeSection === "coaches" && (
@@ -627,7 +768,7 @@ export default function AdminPortal() {
         </header>
         <section className="summary">
           <article>
-            <span>LIVE PACKAGES</span>
+            <span>LIVE PROGRAMS</span>
             <strong>{packages.filter((p) => p.is_active).length}</strong>
             <small>Visible in the mobile app</small>
           </article>
@@ -659,15 +800,15 @@ export default function AdminPortal() {
         {activeSection === "packages" && <section className="library">
           <div className="library-head">
             <div>
-              <h2>All packages</h2>
-              <p>Create unlimited programs and manage their video libraries.</p>
+              <h2>All programs</h2>
+              <p>Create fitness programs and manage their video libraries.</p>
             </div>
             <label className="search">
               <span>⌕</span>
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search packages"
+                placeholder="Search programs"
               />
             </label>
           </div>
@@ -690,7 +831,7 @@ export default function AdminPortal() {
                 <div className="package-copy">
                   <div className="title-row">
                     <div>
-                      <small>{item.duration_days} DAY ACCESS</small>
+                      <small>{item.duration_days} DAY PROGRAM</small>
                       <h3>{item.name}</h3>
                     </div>
                   </div>
@@ -698,23 +839,56 @@ export default function AdminPortal() {
                   <div className="meta">
                     <strong>
                       {money.format(item.price_inr)}
-                      <small> / package</small>
+                      <small> program</small>
                     </strong>
                     <span>{counts.get(item.id) || 0} videos</span>
                   </div>
                   <button className="manage" onClick={() => setSelected(item)}>
-                    Manage package <span>→</span>
+                    Manage program <span>→</span>
                   </button>
                 </div>
               </article>
             ))}
             <button className="new-card" onClick={() => setShowForm(true)}>
               <span>＋</span>
-              <strong>Create another package</strong>
-              <small>Add pricing, details and Mux videos</small>
+              <strong>Create another program</strong>
+              <small>Add program details and Mux videos</small>
             </button>
           </div>
         </section>}
+        {activeSection === "memberships" && <section className="library">
+          <div className="library-head"><div><h2>Membership plans</h2><p>Prices and access periods shown in the mobile app.</p></div></div>
+          <div className="package-grid">
+            {memberships.map((item) => <article className="package-card" key={item.id}>
+              <div className="package-copy"><div className="title-row"><div><small>{item.badge || `${item.duration_days} DAYS`}</small><h3>{item.name}</h3></div></div>
+              <p>{item.description}</p><div className="meta"><strong>{money.format(item.price_inr)}</strong><span>{item.is_active ? "LIVE" : "DRAFT"}</span></div>
+              <small>{item.features.length} included benefits{item.savings_label ? ` · ${item.savings_label}` : ""}</small>
+              <button className="manage" onClick={() => setSelectedMembership(item)}>Edit membership <span>→</span></button></div>
+            </article>)}
+          </div>
+          <form className="membership-form" onSubmit={createMembership}>
+            <h3>Create membership</h3><div className="form-row"><label>Name<input name="name" required placeholder="e.g. 6-Month Membership" /></label><label>Price (₹)<input name="price" type="number" min="0" required /></label></div>
+            <label>Description<textarea name="description" required /></label><div className="form-row"><label>Duration (days)<input name="duration" type="number" min="1" defaultValue="30" required /></label><label>Trial (days)<input name="trial" type="number" min="0" defaultValue="0" /></label></div>
+            <div className="form-row"><label>Badge<input name="badge" placeholder="MOST POPULAR" /></label><label>Savings label<input name="savings" placeholder="Save ₹3,500" /></label></div>
+            <label>Included features<textarea name="features" required placeholder={'One feature per line\nAll workout programs\nProgress tracking'} /></label>
+            <label className="toggle"><input name="popular" type="checkbox" /><span />Mark as popular</label><label className="toggle"><input name="active" type="checkbox" defaultChecked /><span />Publish in mobile app</label>
+            <button className="primary" disabled={busy}>{busy ? "Creating…" : "Create membership"}</button>
+          </form>
+        </section>}
+        {selectedMembership && <div className="modal-backdrop" role="presentation">
+          <section className="modal" role="dialog" aria-modal="true" aria-label={`Edit ${selectedMembership.name}`}>
+            <header><div><small>MEMBERSHIP</small><h2>Edit membership</h2></div><button type="button" onClick={() => setSelectedMembership(null)}>×</button></header>
+            <form onSubmit={updateMembership}>
+              <div className="form-row"><label>Name<input name="name" required defaultValue={selectedMembership.name} /></label><label>Price (₹)<input name="price" type="number" min="0" required defaultValue={selectedMembership.price_inr} /></label></div>
+              <label>Description<textarea name="description" required defaultValue={selectedMembership.description} /></label>
+              <div className="form-row"><label>Duration (days)<input name="duration" type="number" min="1" required defaultValue={selectedMembership.duration_days} /></label><label>Trial (days)<input name="trial" type="number" min="0" defaultValue={selectedMembership.trial_days} /></label></div>
+              <div className="form-row"><label>Badge<input name="badge" defaultValue={selectedMembership.badge || ""} /></label><label>Savings label<input name="savings" defaultValue={selectedMembership.savings_label || ""} /></label></div>
+              <label>Included features<textarea name="features" required defaultValue={selectedMembership.features.join("\n")} /></label>
+              <div className="form-row"><label className="toggle"><input name="popular" type="checkbox" defaultChecked={selectedMembership.is_popular} /><span />Mark as popular</label><label className="toggle"><input name="active" type="checkbox" defaultChecked={selectedMembership.is_active} /><span />Publish in mobile app</label></div>
+              <footer><button type="button" className="secondary" onClick={() => setSelectedMembership(null)}>Cancel</button><button className="primary" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button></footer>
+            </form>
+          </section>
+        </div>}
         {activeSection === "videos" && (
           <section className="library admin-table-page">
             <div className="library-head"><div><h2>All videos</h2><p>Every video uploaded across your packages.</p></div></div>
@@ -787,13 +961,73 @@ export default function AdminPortal() {
             </div>
           </section>
         )}
+        {activeSection === "calls" && (
+          <section className="library admin-table-page">
+            <div className="library-head">
+              <div>
+                <h2>Scheduled calls</h2>
+                <p>Sync Calendly bookings or add a call manually. Matched calls appear in the mobile schedule.</p>
+              </div>
+              <button className="primary" onClick={() => void syncCalendlyCalls()} disabled={busy}>
+                {busy ? "Syncing…" : "Sync Calendly"}
+              </button>
+            </div>
+            <form className="membership-form" onSubmit={createScheduledCall}>
+              <h3>Book a trainer call</h3>
+              <div className="form-row">
+                <label>User
+                  <select name="userId" required defaultValue="">
+                    <option value="" disabled>Select user</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>{user.full_name || user.email} · {user.email}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>Trainer
+                  <select name="coachId" required defaultValue="">
+                    <option value="" disabled>Select trainer</option>
+                    {coaches.map((coach) => (
+                      <option key={coach.id} value={coach.id}>Coach {coach.name}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="form-row">
+                <label>Call title<input name="title" defaultValue="Consultation call" required /></label>
+                <label>Date and time<input name="startsAt" type="datetime-local" required /></label>
+              </div>
+              <label>Meeting link<input name="meetingUrl" type="url" placeholder="https://meet.google.com/... or https://zoom.us/..." /></label>
+              <button className="primary" disabled={busy}>{busy ? "Scheduling…" : "Schedule call"}</button>
+            </form>
+            <div className="admin-table">
+              {scheduledCalls.map((call) => {
+                const user = users.find((item) => item.id === call.user_id);
+                return (
+                  <article key={call.id}>
+                    <div>
+                      <strong>{call.title}</strong>
+                      <small>{user?.email || call.user_id} · Coach {call.coach_name}</small>
+                    </div>
+                    <span className={`status-pill ${call.status}`}>{call.status}</span>
+                    <small>{new Date(call.starts_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</small>
+                    <div className="table-actions">
+                      {call.meeting_url && <a href={call.meeting_url} target="_blank" rel="noreferrer">Open link</a>}
+                      {call.status === "scheduled" && <button className="secondary" onClick={() => void updateScheduledCallStatus(call, "cancelled")}>Cancel</button>}
+                    </div>
+                  </article>
+                );
+              })}
+              {!busy && !scheduledCalls.length && <p className="empty-state">No scheduled calls found.</p>}
+            </div>
+          </section>
+        )}
         {activeSection === "subscriptions" && (
           <section className="library admin-table-page">
             <div className="library-head"><div><h2>Subscriptions</h2><p>Users and their current package access.</p></div></div>
             <div className="admin-table">
               {subscriptions.map((item) => (
                 <article key={item.id}>
-                  <div><strong>{users.find((user) => user.id === item.user_id)?.email || item.user_id}</strong><small>{item.packages?.name || "Unknown package"}</small></div>
+                  <div><strong>{users.find((user) => user.id === item.user_id)?.email || item.user_id}</strong><small>{item.membership_plans?.name || "Unknown membership"}</small></div>
                   <span className={`status-pill ${item.status}`}>{item.status}</span>
                   <small>Expires {new Date(item.expires_at).toLocaleDateString("en-IN")}</small>
                 </article>
@@ -824,13 +1058,13 @@ export default function AdminPortal() {
             <header>
               <div>
                 <small>NEW PROGRAM</small>
-                <h2>Create package</h2>
+                <h2>Create program</h2>
               </div>
               <button onClick={() => setShowForm(false)}>×</button>
             </header>
             <form onSubmit={createPackage}>
               <label>
-                Package name
+                Program name
                 <input
                   name="name"
                   required
@@ -847,11 +1081,11 @@ export default function AdminPortal() {
               </label>
               <div className="form-row">
                 <label>
-                  Price (₹)
-                  <input name="price" type="number" min="0" required />
+                  Display price (₹)
+                  <input name="price" type="number" min="0" defaultValue="0" required />
                 </label>
                 <label>
-                  Access duration (days)
+                  Program duration (days)
                   <input
                     name="duration"
                     type="number"
@@ -875,7 +1109,7 @@ export default function AdminPortal() {
                   Cancel
                 </button>
                 <button className="primary" disabled={busy}>
-                  {busy ? "Creating…" : "Create package"}
+                  {busy ? "Creating…" : "Create program"}
                 </button>
               </footer>
             </form>

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/ui';
@@ -15,13 +15,14 @@ const profilePhoto = require('../../assets/fitness-hero.png');
 export const ProfileScreen = () => {
   const { theme, isDark, toggleTheme } = useAppTheme();
   const { profile, user, signOut } = useAuth();
-  const { plans, subscriptions } = useCatalog();
+  const [signingOut, setSigningOut] = useState(false);
+  const { memberships, membershipSubscriptions } = useCatalog();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Member';
-  const activeSubscriptions = subscriptions.filter(item => item.status === 'active' && new Date(item.expiresAt).getTime() > Date.now());
+  const activeSubscriptions = membershipSubscriptions.filter(item => item.status === 'active' && new Date(item.expiresAt).getTime() > Date.now());
   const primarySubscription = activeSubscriptions[0];
-  const primaryPlan = primarySubscription ? plans.find(plan => plan.id === primarySubscription.packageId) : undefined;
-  const activeNames = activeSubscriptions.map(item => plans.find(plan => plan.id === item.packageId)?.name).filter(Boolean) as string[];
+  const primaryPlan = primarySubscription ? memberships.find(plan => plan.id === primarySubscription.membershipPlanId) : undefined;
+  const activeNames = activeSubscriptions.map(item => memberships.find(plan => plan.id === item.membershipPlanId)?.name).filter(Boolean) as string[];
   const isPremium = activeSubscriptions.length > 0;
   const accountItems = [
     { icon: 'person-outline', label: 'Personal information', detail: 'Name, email and phone', onPress: () => nav.navigate('EditProfile') },
@@ -128,11 +129,16 @@ export const ProfileScreen = () => {
 
         <Pressable
           accessibilityRole="button"
-          onPress={() => signOut().catch(() => undefined)}
+          accessibilityState={{ disabled: signingOut }}
+          disabled={signingOut}
+          onPress={() => {
+            setSigningOut(true);
+            signOut().catch(() => setSigningOut(false));
+          }}
           style={({ pressed }) => [s.logout, { borderColor: `${theme.danger}35`, backgroundColor: `${theme.danger}08`, opacity: pressed ? .65 : 1 }]}
         >
           <Ionicons name="log-out-outline" color={theme.danger} size={21} />
-          <Text style={[s.logoutText, { color: theme.danger }]}>Log out</Text>
+          <Text style={[s.logoutText, { color: theme.danger }]}>{signingOut ? 'Logging out…' : 'Log out'}</Text>
         </Pressable>
         <Text style={[s.version, { color: theme.muted }]}>Fitora · Version 1.0.0</Text>
       </ScrollView>

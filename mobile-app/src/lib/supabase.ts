@@ -6,6 +6,9 @@ import { Database } from '../types/database';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseProjectRef = supabaseUrl ? new URL(supabaseUrl).hostname.split('.')[0] : 'configuration-required';
+
+export const supabaseAuthStorageKey = `sb-${supabaseProjectRef}-auth-token`;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
@@ -16,6 +19,7 @@ export const supabase = createClient<Database>(
   {
     auth: {
       storage: AsyncStorage,
+      storageKey: supabaseAuthStorageKey,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: Platform.OS === 'web',

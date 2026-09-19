@@ -42,25 +42,39 @@ const fitnessDuoImage = require("../../assets/fitness-duo-banner-16x9.png");
 const bodyStrengthImage = require("../../assets/body-strength-workout.png");
 const kettlebellStrengthImage = require("../../assets/kettlebell-strength-workout.png");
 const systemFont = Platform.select({ ios: "System", android: "sans-serif" });
-const serviceCategories = [
-  { name: "Muscle Building", icon: "barbell" },
-  { name: "Strength", icon: "fitness" },
-  { name: "Fat Loss", icon: "flame" },
-  { name: "Mobility", icon: "accessibility" },
-  { name: "Cardio", icon: "heart" },
-] as const;
+const packageIcon = (name: string) => {
+  const normalized = name.toLowerCase();
+  if (normalized.includes("fat") || normalized.includes("weight")) return "flame";
+  if (normalized.includes("strength")) return "fitness";
+  if (normalized.includes("mobility") || normalized.includes("yoga")) return "accessibility";
+  if (normalized.includes("cardio")) return "heart";
+  return "barbell";
+};
 const featuredWorkouts = [
   { title: "Body Strength\nWorkout", image: bodyStrengthImage },
   { title: "Kettlebell Strength\nWorkout", image: kettlebellStrengthImage },
 ] as const;
-const categoryVideoTitles: Record<string, string[]> = {
-  "Muscle Building": ["Upper Body Builder", "Chest & Triceps", "Back & Biceps", "Leg Mass Session", "Full Body Hypertrophy"],
-  Strength: ["Foundational Strength", "Power Lifting Basics", "Lower Body Power", "Strong Core Circuit", "Total Body Strength"],
-  "Fat Loss": ["Full Body Burn", "Low Impact Fat Burn", "Metabolic Conditioning", "HIIT Sweat Session", "Cardio Strength Burn"],
-  Mobility: ["Morning Mobility", "Hip Opening Flow", "Shoulder Mobility", "Full Body Recovery", "Evening Flexibility"],
-  Cardio: ["Beginner Cardio", "Endurance Builder", "Low Impact Cardio", "Cardio Intervals", "Full Body Cardio"],
+const dateKey = (value: Date | string) => {
+  const date = value instanceof Date ? value : new Date(value);
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 };
-const categoryDurations = ["18 min", "24 min", "30 min", "36 min", "45 min"];
+const formatCallTime = (value: string) =>
+  new Date(value).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+const formatCallDay = (value: string) => {
+  const callDate = new Date(value);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(callDate);
+  target.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86_400_000);
+  if (diffDays === 0) return "TODAY";
+  if (diffDays === 1) return "TOM";
+  return callDate.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+};
 const Shell = ({
   children,
   onRefresh,
@@ -103,18 +117,21 @@ export const HomeScreen = () => {
   const { profile, user } = useAuth();
   const nav = useNavigation<Nav>();
   const { width } = useWindowDimensions();
-  const { videos, coaches, plans, subscriptions } = useCatalog();
-  const activeSubscription = subscriptions.find(
+  const { videos, coaches, plans, memberships, membershipSubscriptions, scheduledCalls, hasActivePackage } = useCatalog();
+  const activeSubscription = membershipSubscriptions.find(
     (item) => item.status === "active" && new Date(item.expiresAt).getTime() > Date.now(),
   );
   const activePlan = activeSubscription
-    ? plans.find((plan) => plan.id === activeSubscription.packageId)
+    ? memberships.find((plan) => plan.id === activeSubscription.membershipPlanId)
     : undefined;
   const isPremium = Boolean(activeSubscription);
-  const featured = videos[0];
+  const featured = videos.find((video) => hasActivePackage(video.packageId));
   const workoutCardWidth = width - 40;
   const workoutSlideGap = 12;
   const workoutSnapInterval = workoutCardWidth + workoutSlideGap;
+  const programRowPadding = 20;
+  const programItemGap = 12;
+  const programItemWidth = Math.floor((width - programRowPadding * 2 - programItemGap * 3) / 4);
   const workoutSliderRef = useRef<ScrollView>(null);
   const openTrainers = useCallback(() => {
     const stackNavigation = nav.getParent<Nav>();
@@ -128,17 +145,18 @@ export const HomeScreen = () => {
         const date = new Date();
         date.setHours(0, 0, 0, 0);
         date.setDate(date.getDate() + index);
-        const workoutIndex = index % 2 === 0 ? (index / 2) % 2 : null;
+        const calls = scheduledCalls.filter(call => dateKey(call.startsAt) === dateKey(date));
         return {
           date,
           day: date.toLocaleDateString("en-US", { weekday: "short" }),
           dateNumber: date.getDate(),
-          workoutIndex,
+          calls,
         };
       }),
-    [],
+    [scheduledCalls],
   );
   const selectedSchedule = scheduleDays[selectedScheduleDay];
+  const selectedCall = selectedSchedule.calls[0];
   const displayName =
     profile?.full_name ||
     user?.user_metadata?.full_name ||
@@ -262,19 +280,26 @@ export const HomeScreen = () => {
       </View>
 
       <View>
-        <SectionHeader title="Category" />
+        <SectionHeader title="Explore Programs" />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={s.fullBleedScroller}
-          contentContainerStyle={s.categoryRow}
+          contentContainerStyle={[
+            s.categoryRow,
+            {
+              gap: programItemGap,
+              paddingHorizontal: programRowPadding,
+            },
+          ]}
         >
-          {serviceCategories.map((category) => (
+          {plans.map((plan) => (
             <Pressable
-              key={category.name}
-              onPress={() => nav.navigate("CategoryVideos", { category: category.name })}
+              key={plan.id}
+              onPress={() => nav.navigate("CategoryVideos", { planId: plan.id })}
               style={({ pressed }) => [
                 s.categoryItem,
+                { width: programItemWidth },
                 { opacity: pressed ? 0.72 : 1 },
               ]}
             >
@@ -287,13 +312,13 @@ export const HomeScreen = () => {
                   },
                 ]}
               >
-                <Ionicons name={category.icon} size={33} color={theme.accent} />
+                <Ionicons name={packageIcon(plan.name)} size={33} color={theme.accent} />
               </View>
               <Text
                 numberOfLines={2}
                 style={[s.categoryLabel, { color: theme.text }]}
               >
-                {category.name}
+                {plan.name}
               </Text>
             </Pressable>
           ))}
@@ -305,29 +330,24 @@ export const HomeScreen = () => {
         <View style={s.scheduleCalendarRow}>
           {scheduleDays.map((item, index) => {
             const selected = index === selectedScheduleDay;
-            const scheduled = item.workoutIndex !== null;
+            const scheduled = item.calls.length > 0;
             return (
               <Pressable
                 key={item.date.toISOString()}
-                onPress={() => {
-                  setSelectedScheduleDay(index);
-                  if (item.workoutIndex !== null) {
-                    setActiveWorkoutSlide(item.workoutIndex);
-                    workoutSliderRef.current?.scrollTo({
-                      x: item.workoutIndex * workoutSnapInterval,
-                      animated: true,
-                    });
-                  }
-                }}
+                onPress={() => setSelectedScheduleDay(index)}
                 style={({ pressed }) => [
                   s.scheduleCalendarDay,
                   {
                     backgroundColor: selected
                       ? theme.accent
                       : scheduled
-                        ? "#FFF0E7"
-                        : "#FFF8F4",
-                    borderColor: selected ? theme.accent : "#FFE1D0",
+                        ? theme.dark ? "#2B211C" : "#FFF0E7"
+                        : theme.dark ? "#211D1A" : "#FFF8F4",
+                    borderColor: selected
+                      ? theme.accent
+                      : theme.dark
+                        ? "rgba(243,107,33,0.34)"
+                        : "#FFE1D0",
                     opacity: pressed ? 0.7 : 1,
                   },
                   selected && s.scheduleCalendarDaySelected,
@@ -336,7 +356,7 @@ export const HomeScreen = () => {
                 <Text
                   style={[
                     s.scheduleCalendarDayName,
-                    { color: selected ? "#FFFFFF" : theme.muted },
+                    { color: selected ? "#FFFFFF" : theme.dark ? "#DDD6CF" : theme.muted },
                   ]}
                 >
                   {item.day}
@@ -345,20 +365,45 @@ export const HomeScreen = () => {
                   style={[
                     s.scheduleCalendarDateBubble,
                     {
-                      backgroundColor: selected ? "#FFFFFF" : "rgba(255,255,255,0.9)",
-                      borderColor: selected ? "rgba(255,255,255,0.7)" : "#FFE6D8",
+                      backgroundColor: selected
+                        ? "#FFFFFF"
+                        : theme.dark
+                          ? "rgba(255,255,255,0.08)"
+                          : "rgba(255,255,255,0.9)",
+                      borderColor: selected
+                        ? "rgba(255,255,255,0.7)"
+                        : theme.dark
+                          ? "rgba(243,107,33,0.28)"
+                          : "#FFE6D8",
                     },
                   ]}
                 >
                   <Text
                     style={[
                       s.scheduleCalendarDate,
-                      { color: selected ? theme.accent : theme.text },
+                      { color: selected ? theme.accent : theme.dark ? "#F4EFEA" : theme.text },
                     ]}
                   >
                     {item.dateNumber}
                   </Text>
                 </View>
+                {scheduled && (
+                  <View
+                    style={[
+                      s.scheduleCallMarker,
+                      {
+                        backgroundColor: selected ? "#FFFFFF" : theme.accent,
+                        borderColor: selected ? "rgba(255,255,255,0.75)" : theme.background,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="videocam"
+                      size={8}
+                      color={selected ? theme.accent : "#FFFFFF"}
+                    />
+                  </View>
+                )}
               </Pressable>
             );
           })}
@@ -370,20 +415,18 @@ export const HomeScreen = () => {
           ]}
         >
           <Ionicons
-            name={selectedSchedule.workoutIndex !== null ? "barbell-outline" : "moon-outline"}
+            name={selectedCall ? "videocam-outline" : "calendar-outline"}
             size={18}
             color={theme.accent}
           />
           <View style={{ flex: 1 }}>
             <Text style={[s.scheduleSelectionTitle, { color: theme.text }]}>
-              {selectedSchedule.workoutIndex !== null
-                ? featuredWorkouts[selectedSchedule.workoutIndex].title.replace("\n", " ")
-                : "Recovery day"}
+              {selectedCall ? selectedCall.title : "No calls scheduled"}
             </Text>
             <Text style={[s.scheduleSelectionMeta, { color: theme.muted }]}>
-              {selectedSchedule.workoutIndex !== null
-                ? "45 mins · Tap the workout below to begin"
-                : "No workout scheduled"}
+              {selectedCall
+                ? `${formatCallTime(selectedCall.startsAt)} · Coach ${selectedCall.coachName}`
+                : "Booked consultation calls will appear here"}
             </Text>
           </View>
         </View>
@@ -564,15 +607,11 @@ export const HomeScreen = () => {
         </>
       )}
 
-      <SectionHeader title="Scheduled" action="All schedules" />
+      <SectionHeader title="Scheduled Calls" />
       <View style={s.scheduleList}>
-        {[
-          ["TODAY", "7:00", "Bench Press", "Strength · 4 sets"],
-          ["TOM", "6:30", "Core Control", "Core · 25 min"],
-          ["FRI", "8:00", "Mobility Flow", "Recovery · 30 min"],
-        ].map(([day, time, title, detail]) => (
+        {scheduledCalls.length ? scheduledCalls.slice(0, 3).map((call) => (
           <View
-            key={title}
+            key={call.id}
             style={[
               s.scheduleCard,
               {
@@ -587,22 +626,44 @@ export const HomeScreen = () => {
                 { backgroundColor: theme.dark ? "#302019" : theme.accentSoft },
               ]}
             >
-              <Text style={[s.dateDay, { color: theme.accent }]}>{day}</Text>
-              <Text style={[s.dateTime, { color: theme.text }]}>{time}</Text>
+              <Text style={[s.dateDay, { color: theme.accent }]}>{formatCallDay(call.startsAt)}</Text>
+              <Text style={[s.dateTime, { color: theme.text }]}>{formatCallTime(call.startsAt)}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[s.rowTitle, { color: theme.text }]}>{title}</Text>
+              <Text style={[s.rowTitle, { color: theme.text }]}>{call.title}</Text>
               <Text style={{ color: theme.muted, fontSize: 12, marginTop: 3 }}>
-                {detail}
+                Coach {call.coachName} · {call.provider === "calendly" ? "Calendly booking" : "Consultation call"}
               </Text>
             </View>
             <Pressable
+              disabled={!call.meetingUrl}
+              onPress={() => call.meetingUrl && Linking.openURL(call.meetingUrl).catch(() => undefined)}
               style={[s.schedulePlay, { backgroundColor: theme.accent }]}
             >
-              <Ionicons name="play" size={14} color="#fff" />
+              <Ionicons name={call.meetingUrl ? "videocam" : "calendar"} size={14} color="#fff" />
             </Pressable>
           </View>
-        ))}
+        )) : (
+          <View
+            style={[
+              s.scheduleEmptyCard,
+              {
+                backgroundColor: theme.dark ? "#191918" : "#FAFAF8",
+                borderColor: theme.dark ? "#30302E" : "#ECEBE7",
+              },
+            ]}
+          >
+            <View style={[s.scheduleEmptyIcon, { backgroundColor: theme.accentSoft }]}>
+              <Ionicons name="calendar-outline" size={22} color={theme.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.rowTitle, { color: theme.text }]}>No coach calls yet</Text>
+              <Text style={{ color: theme.muted, fontSize: 12, marginTop: 3 }}>
+                Your booked trainer consultations will appear here.
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
     </Shell>
   );
@@ -612,7 +673,14 @@ type CategoryVideosProps = NativeStackScreenProps<RootStackParamList, "CategoryV
 
 export const CategoryVideosScreen = ({ navigation, route }: CategoryVideosProps) => {
   const { theme } = useAppTheme();
-  const titles = categoryVideoTitles[route.params.category] ?? categoryVideoTitles.Strength;
+  const { plans, videos, hasActivePackage } = useCatalog();
+  const plan = plans.find((item) => item.id === route.params.planId);
+  const packageVideos = videos.filter((item) => item.packageId === route.params.planId);
+  const unlocked = hasActivePackage(route.params.planId);
+
+  if (!plan) {
+    return <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: theme.background }}><View style={s.categoryVideosPage}><AppHeader title="Program" back onBack={() => navigation.goBack()} /><EmptyState title="This program is no longer available." /></View></SafeAreaView>;
+  }
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: theme.background }}>
@@ -621,23 +689,25 @@ export const CategoryVideosScreen = ({ navigation, route }: CategoryVideosProps)
         contentContainerStyle={s.categoryVideosPage}
       >
         <AppHeader
-          title={route.params.category}
-          subtitle="Choose a workout and start moving."
+          title={plan.name}
+          subtitle={unlocked ? "Your workouts are ready." : "Preview the program before you subscribe."}
           back
           onBack={() => navigation.goBack()}
         />
         <View style={s.categoryVideosIntro}>
-          <Text style={[s.categoryVideosCount, { color: theme.accent }]}>5 VIDEOS</Text>
-          <Text style={[s.categoryVideosDescription, { color: theme.muted }]}>Fresh sessions for every level. Your uploaded videos will appear here automatically later.</Text>
+          <Text style={[s.categoryVideosCount, { color: theme.accent }]}>{packageVideos.length} {packageVideos.length === 1 ? "VIDEO" : "VIDEOS"}</Text>
+          <Text style={[s.categoryVideosDescription, { color: theme.muted }]}>{unlocked ? "Included in your active membership. Tap any workout to start." : "Browse every workout in this program. Choose a membership to unlock playback."}</Text>
         </View>
         <View style={s.categoryVideosList}>
-          {titles.map((title, index) => (
-            <View
-              key={`${route.params.category}-${title}`}
+          {packageVideos.length === 0 ? <EmptyState title="Videos for this program are coming soon." /> : packageVideos.map((video, index) => {
+            const videoUnlocked = Boolean(video.muxPlaybackId);
+            return <Pressable
+              key={video.id}
+              onPress={() => navigation.navigate(videoUnlocked ? "VideoDetails" : "LockedContent", { videoId: video.id })}
               style={[s.categoryVideoCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
             >
               <ImageBackground
-                source={index % 2 === 0 ? bodyStrengthImage : kettlebellStrengthImage}
+                source={video.thumbnailUrl ? { uri: video.thumbnailUrl } : index % 2 === 0 ? bodyStrengthImage : kettlebellStrengthImage}
                 resizeMode="cover"
                 imageStyle={s.categoryVideoImage}
                 style={s.categoryVideoImageWrap}
@@ -648,20 +718,20 @@ export const CategoryVideosScreen = ({ navigation, route }: CategoryVideosProps)
                 />
                 <View style={s.categoryVideoTopRow}>
                   <View style={s.categoryVideoNumber}><Text style={s.categoryVideoNumberText}>{String(index + 1).padStart(2, "0")}</Text></View>
-                  <View style={s.categoryVideoDuration}><Ionicons name="time-outline" size={13} color="#FFFFFF"/><Text style={s.categoryVideoDurationText}>{categoryDurations[index]}</Text></View>
+                  <View style={s.categoryVideoDuration}><Ionicons name={videoUnlocked ? "time-outline" : "lock-closed"} size={13} color="#FFFFFF"/><Text style={s.categoryVideoDurationText}>{videoUnlocked ? video.duration : "Locked"}</Text></View>
                 </View>
                 <View style={s.categoryVideoBottomRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.categoryVideoTitle}>{title}</Text>
-                    <Text style={s.categoryVideoMeta}>{route.params.category} · All levels</Text>
+                    <Text style={s.categoryVideoTitle}>{video.title}</Text>
+                    <Text style={s.categoryVideoMeta}>{plan.name} · {video.trainer || "Fitora coach"}</Text>
                   </View>
                   <View style={[s.categoryVideoPlay, { backgroundColor: theme.accent }]}>
-                    <Ionicons name="play" size={20} color="#FFFFFF" style={{ marginLeft: 2 }}/>
+                    <Ionicons name={videoUnlocked ? "play" : "lock-closed"} size={videoUnlocked ? 20 : 18} color="#FFFFFF" style={videoUnlocked ? { marginLeft: 2 } : undefined}/>
                   </View>
                 </View>
               </ImageBackground>
-            </View>
-          ))}
+            </Pressable>;
+          })}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -804,27 +874,26 @@ export const CoachProfileScreen = ({ navigation, route }: CoachProfileProps) => 
 export const ExploreScreen = () => {
   const { theme } = useAppTheme();
   const nav = useNavigation<Nav>();
-  const { plans, videos, subscriptions, loading, error } = useCatalog();
+  const { plans, videos, loading, error, hasActivePackage, hasActiveMembership } = useCatalog();
   const [active, setActive] = useState("All");
   const [query, setQuery] = useState("");
   const categories = [
     "All",
     ...plans
-      .filter((plan) => videos.some((video) => video.packageId === plan.id))
+      .filter((plan) => hasActivePackage(plan.id) && videos.some((video) => video.packageId === plan.id))
       .map((plan) => plan.name),
   ];
   const shown = useMemo(
     () =>
       videos.filter(
         (v) =>
+          hasActivePackage(v.packageId) &&
           (active === "All" || v.category === active) &&
           v.title.toLowerCase().includes(query.toLowerCase()),
       ),
-    [active, query, videos],
+    [active, hasActivePackage, query, videos],
   );
-  const hasActiveSubscription = subscriptions.some(
-    item => item.status === "active" && new Date(item.expiresAt).getTime() > Date.now(),
-  );
+  const hasActiveSubscription = hasActiveMembership();
   return (
     <Shell>
       <AppHeader title="Workouts" subtitle="Find your next workout." />
@@ -963,17 +1032,17 @@ const SubscriptionPrompt = ({ onPress }: { onPress: () => void }) => {
       </View>
     </View>
     <Text style={[s.progressEmptyTitle, { color: theme.text }]}>Start your fitness journey</Text>
-    <Text style={[s.progressEmptyCopy, { color: theme.muted }]}>Choose a plan to unlock guided workouts. Your completed sessions and video progress will appear here automatically.</Text>
+    <Text style={[s.progressEmptyCopy, { color: theme.muted }]}>Choose a membership to unlock guided workouts. Your completed sessions and video progress will appear here automatically.</Text>
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [s.progressEmptyCta, { backgroundColor: theme.accent, opacity: pressed ? .8 : 1 }]}
     >
-      <Text style={s.progressEmptyCtaText}>Explore plans</Text>
+      <Text style={s.progressEmptyCtaText}>Explore memberships</Text>
       <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
     </Pressable>
     <View style={s.progressEmptyTrustRow}>
       <Ionicons name="checkmark-circle" size={15} color={theme.accent} />
-      <Text style={[s.progressEmptyTrustText, { color: theme.muted }]}>Pick the program that matches your goal</Text>
+      <Text style={[s.progressEmptyTrustText, { color: theme.muted }]}>One membership unlocks every included program</Text>
     </View>
   </View>;
 };
@@ -981,7 +1050,7 @@ const SubscriptionPrompt = ({ onPress }: { onPress: () => void }) => {
 export const ProgressScreen = () => {
   const { theme } = useAppTheme();
   const nav = useNavigation<Nav>();
-  const { videos, subscriptions, loading, error } = useCatalog();
+  const { videos, loading, error, hasActivePackage, hasActiveMembership } = useCatalog();
   const [progress, setProgress] = useState<Record<string, VideoProgressRecord>>({});
 
   useFocusEffect(
@@ -998,6 +1067,7 @@ export const ProgressScreen = () => {
 
   const inProgress = useMemo(
     () => videos
+      .filter(video => hasActivePackage(video.packageId))
       .map(video => ({ video, record: progress[video.id] }))
       .filter(({ record }) => {
         if (!record || record.positionSeconds <= 0) return false;
@@ -1005,11 +1075,9 @@ export const ProgressScreen = () => {
         return record.positionSeconds / duration < 0.98;
       })
       .sort((a, b) => b.record.updatedAt.localeCompare(a.record.updatedAt)),
-    [progress, videos],
+    [hasActivePackage, progress, videos],
   );
-  const hasActiveSubscription = subscriptions.some(
-    item => item.status === "active" && new Date(item.expiresAt).getTime() > Date.now(),
-  );
+  const hasActiveSubscription = hasActiveMembership();
 
   return <Shell>
     <AppHeader title="Progress" subtitle="Continue where you left off." />
@@ -1075,12 +1143,12 @@ export const ProgressScreen = () => {
 };
 export const PlansScreen = () => {
   const nav = useNavigation<Nav>();
-  const { plans, loading, error } = useCatalog();
+  const { memberships, loading, error } = useCatalog();
   return (
     <Shell>
       <AppHeader
         title="Membership"
-        subtitle="Choose the program that matches your goal."
+        subtitle="Choose the access period that works for you."
         back
         onBack={() => nav.goBack()}
       />
@@ -1089,7 +1157,7 @@ export const PlansScreen = () => {
       ) : error ? (
         <EmptyState title={error} />
       ) : (
-        plans.map((p) => (
+        memberships.map((p) => (
           <PlanCard
             key={p.id}
             plan={p}
@@ -1104,8 +1172,8 @@ export const PlansScreen = () => {
 export const SubscriptionScreen = () => {
   const { theme } = useAppTheme();
   const nav = useNavigation<Nav>();
-  const { plans, subscriptions } = useCatalog();
-  const active = subscriptions.filter(
+  const { memberships, membershipSubscriptions } = useCatalog();
+  const active = membershipSubscriptions.filter(
     (item) =>
       item.status === "active" &&
       new Date(item.expiresAt).getTime() > Date.now(),
@@ -1113,15 +1181,17 @@ export const SubscriptionScreen = () => {
   return (
     <Shell>
       <AppHeader
-        title="My subscriptions"
-        subtitle="Manage your programs and course access."
+        title="My membership"
+        subtitle="Manage your Fitora access and renewal options."
+        back
+        onBack={() => nav.goBack()}
       />
       {active.length === 0 ? (
         <SubscriptionPrompt onPress={() => nav.navigate("Plans")} />
       ) : (
         <>
           {active.map((item) => {
-            const plan = plans.find((p) => p.id === item.packageId);
+            const plan = memberships.find((p) => p.id === item.membershipPlanId);
             if (!plan) return null;
             const days = Math.max(
               0,
@@ -1138,7 +1208,7 @@ export const SubscriptionScreen = () => {
                 {[
                   ["Expires on", new Date(item.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })],
                   ["Days remaining", `${days} days`],
-                  ["Access", `${plan.name} videos`],
+                  ["Access", "All Fitora programs"],
                 ].map(([a, b]) => (
                   <View key={a} style={s.infoRow}>
                     <Text style={{ color: theme.muted }}>{a}</Text>
@@ -1150,7 +1220,7 @@ export const SubscriptionScreen = () => {
               </GlassCard>
             );
           })}
-          <AppButton title="Browse more packages" onPress={() => nav.navigate("Plans")} />
+          <AppButton title="View memberships" onPress={() => nav.navigate("Plans")} />
         </>
       )}
     </Shell>
@@ -1318,12 +1388,9 @@ const s = StyleSheet.create({
     bottom: -10,
   },
   categoryRow: {
-    gap: 15,
     paddingTop: 11,
-    paddingHorizontal: 20,
   },
   categoryItem: {
-    width: 68,
     alignItems: "center",
     gap: 8,
   },
@@ -1390,6 +1457,17 @@ const s = StyleSheet.create({
     fontSize: 14,
     lineHeight: 17,
     fontWeight: "800",
+  },
+  scheduleCallMarker: {
+    position: "absolute",
+    right: 5,
+    top: 28,
+    width: 17,
+    height: 17,
+    borderRadius: 9,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   scheduleSelection: {
     minHeight: 50,
@@ -1638,6 +1716,22 @@ const s = StyleSheet.create({
     width: 52,
     height: 50,
     borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scheduleEmptyCard: {
+    minHeight: 78,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  scheduleEmptyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },

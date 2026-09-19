@@ -66,7 +66,12 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
     requestLoginOtp: async email => { const { error } = await authService.requestLoginOtp(email); if (error) throw error; },
     verifyEmailOtp: async (email, token) => { const { error } = await authService.verifyEmailOtp(email, token); if (error) throw error; },
     resendEmailOtp: async (email, mode) => { const { error } = await authService.resendEmailOtp(email, mode); if (error) throw error; },
-    signOut: async () => { const { error } = await authService.signOut(); if (error) throw error; },
+    signOut: async () => {
+      setSession(null);
+      setProfile(null);
+      const { error } = await authService.signOut();
+      if (error) throw error;
+    },
     refreshProfile,
     updateProfile: async update => { if (!session) throw new Error('You must be signed in.'); const { data, error } = await profileService.updateProfile(session.user.id, update); if (error) throw error; setProfile(data); },
   }), [loading, profile, refreshProfile, session]);

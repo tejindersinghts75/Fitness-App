@@ -1,4 +1,5 @@
-import { requireSupabaseConfiguration, supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { requireSupabaseConfiguration, supabase, supabaseAuthStorageKey } from '../lib/supabase';
 
 export type SignUpInput = { firstName: string; email: string; phone: string };
 export type OtpMode = 'signup' | 'login';
@@ -33,5 +34,12 @@ export const authService = {
       options: { shouldCreateUser: mode === 'signup' },
     });
   },
-  signOut: async () => { requireSupabaseConfiguration(); return supabase.auth.signOut(); },
+  signOut: async () => {
+    requireSupabaseConfiguration();
+    await AsyncStorage.multiRemove([
+      supabaseAuthStorageKey,
+      `${supabaseAuthStorageKey}-code-verifier`,
+    ]);
+    return supabase.auth.signOut({ scope: 'local' });
+  },
 };

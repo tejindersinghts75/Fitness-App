@@ -8,20 +8,26 @@ import React, {
   useState,
 } from "react";
 import { AppState } from "react-native";
+import { supabase } from "../lib/supabase";
 import { contentService } from "../services/contentService";
-import { Coach, Plan, UserSubscription, Video } from "../types";
+import { Coach, MembershipPlan, MembershipSubscription, Plan, ScheduledCall, UserSubscription, Video } from "../types";
 import { useAuth } from "./AuthContext";
 
 type CatalogContextValue = {
   plans: Plan[];
+  memberships: MembershipPlan[];
   videos: Video[];
   coaches: Coach[];
+  scheduledCalls: ScheduledCall[];
   subscriptions: UserSubscription[];
+  membershipSubscriptions: MembershipSubscription[];
   loading: boolean;
   error: string;
   refresh: () => Promise<void>;
   activateDummySubscription: (packageId: string) => Promise<void>;
+  activateDummyMembership: (membershipPlanId: string) => Promise<void>;
   hasActivePackage: (packageId: string) => boolean;
+  hasActiveMembership: () => boolean;
 };
 
 const CatalogContext = createContext<CatalogContextValue | null>(null);
@@ -29,9 +35,12 @@ const CatalogContext = createContext<CatalogContextValue | null>(null);
 export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
   const { user } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [memberships, setMemberships] = useState<MembershipPlan[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [scheduledCalls, setScheduledCalls] = useState<ScheduledCall[]>([]);
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
+  const [membershipSubscriptions, setMembershipSubscriptions] = useState<MembershipSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const requestId = useRef(0);
@@ -40,9 +49,12 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
     const currentRequest = ++requestId.current;
     if (!user) {
       setPlans([]);
+      setMemberships([]);
       setVideos([]);
       setCoaches([]);
+      setScheduledCalls([]);
       setSubscriptions([]);
+      setMembershipSubscriptions([]);
       setLoading(false);
       setError("");
       return;
@@ -50,19 +62,25 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
     setLoading(true);
     setError("");
     try {
-      const [nextPlans, nextCoaches] = await Promise.all([
+      const [nextPlans, nextMemberships, nextCoaches] = await Promise.all([
         contentService.fetchPackages(),
+        contentService.fetchMembershipPlans(),
         contentService.fetchCoaches(),
       ]);
-      const [nextSubscriptions, nextVideos] = await Promise.all([
+      const [nextSubscriptions, nextMembershipSubscriptions, nextVideos, nextScheduledCalls] = await Promise.all([
         contentService.fetchSubscriptions(user.id),
-        contentService.fetchEntitledVideos(nextPlans),
+        contentService.fetchMembershipSubscriptions(user.id),
+        contentService.fetchPublishedVideos(nextPlans),
+        contentService.fetchScheduledCalls(user.id),
       ]);
       if (currentRequest === requestId.current) {
         setPlans(nextPlans);
+        setMemberships(nextMemberships);
         setSubscriptions(nextSubscriptions);
+        setMembershipSubscriptions(nextMembershipSubscriptions);
         setVideos(nextVideos);
         setCoaches(nextCoaches);
+        setScheduledCalls(nextScheduledCalls);
       }
     } catch (caught) {
       if (currentRequest === requestId.current) {
@@ -89,7 +107,27 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
   }, [refresh]);
 
   useEffect(() => {
-    const expirations = subscriptions
+    if (!user) return;
+    const channel = supabase
+      .channel(`scheduled-calls-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "scheduled_calls",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => refresh().catch(() => undefined),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refresh, user]);
+
+  useEffect(() => {
+    const expirations = [...subscriptions, ...membershipSubscriptions]
       .filter((item) => item.status === "active")
       .map((item) => new Date(item.expiresAt).getTime())
       .filter((timestamp) => timestamp > Date.now());
@@ -99,35 +137,48 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
     const delay = Math.min(nextExpiration - Date.now() + 250, 2_147_483_647);
     const timer = setTimeout(() => refresh().catch(() => undefined), delay);
     return () => clearTimeout(timer);
-  }, [refresh, subscriptions]);
+  }, [membershipSubscriptions, refresh, subscriptions]);
+
+  const hasActiveMembership = useCallback(
+    () => membershipSubscriptions.some(item => item.status === "active" && new Date(item.expiresAt).getTime() > Date.now()),
+    [membershipSubscriptions],
+  );
 
   const hasActivePackage = useCallback(
     (packageId: string) =>
-      subscriptions.some(
+      hasActiveMembership() || subscriptions.some(
         (item) =>
           item.packageId === packageId &&
           item.status === "active" &&
           new Date(item.expiresAt).getTime() > Date.now(),
       ),
-    [subscriptions],
+    [hasActiveMembership, subscriptions],
   );
 
   const value = useMemo<CatalogContextValue>(
     () => ({
       plans,
+      memberships,
       videos,
       coaches,
+      scheduledCalls,
       subscriptions,
+      membershipSubscriptions,
       loading,
       error,
       refresh,
       hasActivePackage,
+      hasActiveMembership,
       activateDummySubscription: async (packageId) => {
         await contentService.activateDummySubscription(packageId);
         await refresh();
       },
+      activateDummyMembership: async (membershipPlanId) => {
+        await contentService.activateDummyMembership(membershipPlanId);
+        await refresh();
+      },
     }),
-    [coaches, error, hasActivePackage, loading, plans, refresh, subscriptions, videos],
+    [coaches, error, hasActiveMembership, hasActivePackage, loading, membershipSubscriptions, memberships, plans, refresh, scheduledCalls, subscriptions, videos],
   );
 
   return (

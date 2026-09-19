@@ -63,6 +63,38 @@ textarea {
   color: var(--muted);
   font-size: 11px;
 }
+.table-actions {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.table-actions a,
+.table-actions button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.membership-form select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px 13px;
+  color: var(--ink);
+  outline: none;
+}
+.membership-form input:focus,
+.membership-form textarea:focus,
+.membership-form select:focus {
+  border-color: var(--orange);
+}
 .status-pill {
   width: fit-content;
   border-radius: 999px;
