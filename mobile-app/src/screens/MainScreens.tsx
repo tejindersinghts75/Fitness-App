@@ -33,6 +33,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useCatalog } from "../context/CatalogContext";
 import { useAppTheme } from "../context/ThemeContext";
+import { bookingService } from "../services/bookingService";
 import { VideoProgressRecord, videoProgressService } from "../services/videoProgressService";
 import { RootStackParamList } from "../types";
 
@@ -75,6 +76,8 @@ const formatCallDay = (value: string) => {
   if (diffDays === 1) return "TOM";
   return callDate.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
 };
+const formatCallDateNumber = (value: string) =>
+  new Date(value).toLocaleDateString("en-US", { day: "2-digit" });
 const Shell = ({
   children,
   onRefresh,
@@ -620,28 +623,51 @@ export const HomeScreen = () => {
               },
             ]}
           >
-            <View
-              style={[
-                s.dateBlock,
-                { backgroundColor: theme.dark ? "#302019" : theme.accentSoft },
-              ]}
-            >
-              <Text style={[s.dateDay, { color: theme.accent }]}>{formatCallDay(call.startsAt)}</Text>
-              <Text style={[s.dateTime, { color: theme.text }]}>{formatCallTime(call.startsAt)}</Text>
+            <View style={s.scheduleTopRow}>
+              <View style={[s.dateBlock, { backgroundColor: theme.accent }]}> 
+                <Text style={s.dateDay}>{formatCallDay(call.startsAt)}</Text>
+                <Text style={s.dateNumber}>{formatCallDateNumber(call.startsAt)}</Text>
+              </View>
+              <View style={s.scheduleContent}>
+                <View style={s.scheduleTitleRow}>
+                  <Text numberOfLines={1} style={[s.scheduleTitle, { color: theme.text }]}>{call.title}</Text>
+                  <View style={[s.upcomingBadge, { backgroundColor: theme.dark ? "#2E241F" : "#FFF0E7" }]}> 
+                    <View style={[s.upcomingDot, { backgroundColor: theme.accent }]} />
+                    <Text style={[s.upcomingText, { color: theme.accent }]}>UPCOMING</Text>
+                  </View>
+                </View>
+                <View style={s.scheduleMetaRow}>
+                  <Ionicons name="person-circle-outline" size={16} color={theme.muted} />
+                  <Text numberOfLines={1} style={[s.scheduleMetaText, { color: theme.muted }]}>Coach {call.coachName}</Text>
+                </View>
+                <Text style={[s.scheduleProviderText, { color: theme.muted }]}> 
+                  {call.provider === "calendly" ? "Calendly consultation" : "Fitora consultation"}
+                </Text>
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.rowTitle, { color: theme.text }]}>{call.title}</Text>
-              <Text style={{ color: theme.muted, fontSize: 12, marginTop: 3 }}>
-                Coach {call.coachName} · {call.provider === "calendly" ? "Calendly booking" : "Consultation call"}
-              </Text>
+            <View style={[s.scheduleDivider, { backgroundColor: theme.dark ? "#30302E" : "#ECEBE7" }]} />
+            <View style={s.scheduleFooter}>
+              <View style={s.scheduleTimeRow}>
+                <View style={[s.scheduleTimeIcon, { backgroundColor: theme.dark ? "#2B2B29" : "#F1F1ED" }]}> 
+                  <Ionicons name="time-outline" size={16} color={theme.accent} />
+                </View>
+                <View>
+                  <Text style={[s.scheduleTimeLabel, { color: theme.muted }]}>STARTS AT</Text>
+                  <Text style={[s.scheduleTimeValue, { color: theme.text }]}>{formatCallTime(call.startsAt)}</Text>
+                </View>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={call.meetingUrl ? `Join ${call.title}` : "Call link unavailable"}
+                disabled={!call.meetingUrl}
+                onPress={() => call.meetingUrl && Linking.openURL(call.meetingUrl).catch(() => undefined)}
+                style={({ pressed }) => [s.joinCallButton, { backgroundColor: call.meetingUrl ? theme.accent : theme.surfaceAlt, opacity: pressed ? 0.76 : call.meetingUrl ? 1 : 0.55 }]}
+              >
+                <Ionicons name={call.meetingUrl ? "videocam" : "calendar"} size={17} color={call.meetingUrl ? "#fff" : theme.muted} />
+                <Text style={[s.joinCallText, { color: call.meetingUrl ? "#fff" : theme.muted }]}>{call.meetingUrl ? "Join call" : "Link pending"}</Text>
+                {call.meetingUrl && <Ionicons name="arrow-forward" size={15} color="#fff" />}
+              </Pressable>
             </View>
-            <Pressable
-              disabled={!call.meetingUrl}
-              onPress={() => call.meetingUrl && Linking.openURL(call.meetingUrl).catch(() => undefined)}
-              style={[s.schedulePlay, { backgroundColor: theme.accent }]}
-            >
-              <Ionicons name={call.meetingUrl ? "videocam" : "calendar"} size={14} color="#fff" />
-            </Pressable>
           </View>
         )) : (
           <View
@@ -789,8 +815,22 @@ export const TrainersScreen = ({ navigation }: TrainersProps) => {
 
 export const CoachProfileScreen = ({ navigation, route }: CoachProfileProps) => {
   const { theme } = useAppTheme();
-  const { coaches, loading } = useCatalog();
+  const { coaches, loading, refresh } = useCatalog();
+  const [booking, setBooking] = useState(false);
+  const [bookingNotice, setBookingNotice] = useState("");
   const coach = coaches.find((item) => item.id === route.params.coachId);
+  const openBooking = async () => {
+    if (!coach?.bookingUrl || booking) return;
+    setBooking(true);
+    setBookingNotice("");
+    try {
+      await bookingService.open(coach.bookingUrl);
+      await refresh();
+      setBookingNotice("Your schedule will update automatically when the booking is confirmed.");
+    } finally {
+      setBooking(false);
+    }
+  };
 
   if (loading && !coach) return <LoadingState />;
   if (!coach) {
@@ -859,11 +899,20 @@ export const CoachProfileScreen = ({ navigation, route }: CoachProfileProps) => 
         </View>
 
         {coach.bookingUrl && (
-          <AppButton
-            title="Book consultation"
-            icon="calendar-outline"
-            onPress={() => Linking.openURL(coach.bookingUrl!).catch(() => undefined)}
-          />
+          <>
+            <AppButton
+              title={booking ? "Opening Calendly…" : "Book consultation"}
+              icon="calendar-outline"
+              disabled={booking}
+              onPress={() => void openBooking()}
+            />
+            {!!bookingNotice && (
+              <View style={[s.bookingNotice, { backgroundColor: theme.accentSoft }]}> 
+                <Ionicons name="checkmark-circle" size={17} color={theme.accent} />
+                <Text style={[s.bookingNoticeText, { color: theme.text }]}>{bookingNotice}</Text>
+              </View>
+            )}
+          </>
         )}
 
       </ScrollView>
@@ -1704,21 +1753,40 @@ const s = StyleSheet.create({
   },
   scheduleList: { gap: 9 },
   scheduleCard: {
-    minHeight: 72,
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
-    padding: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+    elevation: 3,
   },
+  scheduleTopRow: { flexDirection: "row", alignItems: "center", gap: 13 },
   dateBlock: {
-    width: 52,
-    height: 50,
-    borderRadius: 14,
+    width: 58,
+    height: 64,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
+  scheduleContent: { flex: 1, minWidth: 0 },
+  scheduleTitleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  scheduleTitle: { flex: 1, fontSize: 16, lineHeight: 20, fontWeight: "900", letterSpacing: -0.25 },
+  upcomingBadge: { height: 21, borderRadius: 99, paddingHorizontal: 7, flexDirection: "row", alignItems: "center", gap: 4 },
+  upcomingDot: { width: 5, height: 5, borderRadius: 3 },
+  upcomingText: { fontSize: 8, fontWeight: "900", letterSpacing: 0.45 },
+  scheduleMetaRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 7 },
+  scheduleMetaText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: "700" },
+  scheduleProviderText: { fontSize: 10.5, lineHeight: 14, fontWeight: "600", marginTop: 2 },
+  scheduleDivider: { height: 1, marginVertical: 13 },
+  scheduleFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  scheduleTimeRow: { flexDirection: "row", alignItems: "center", gap: 9 },
+  scheduleTimeIcon: { width: 34, height: 34, borderRadius: 11, alignItems: "center", justifyContent: "center" },
+  scheduleTimeLabel: { fontSize: 8, lineHeight: 10, fontWeight: "900", letterSpacing: 0.7 },
+  scheduleTimeValue: { fontSize: 13, lineHeight: 16, fontWeight: "900", marginTop: 1 },
+  joinCallButton: { height: 40, borderRadius: 14, paddingHorizontal: 13, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  joinCallText: { fontSize: 12, fontWeight: "900" },
   scheduleEmptyCard: {
     minHeight: 78,
     borderRadius: 20,
@@ -1735,15 +1803,8 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dateDay: { fontSize: 9, fontWeight: "900", letterSpacing: 0.5 },
-  dateTime: { fontSize: 14, fontWeight: "900", marginTop: 2 },
-  schedulePlay: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  dateDay: { color: "rgba(255,255,255,.78)", fontSize: 9, lineHeight: 11, fontWeight: "900", letterSpacing: 0.9 },
+  dateNumber: { color: "#FFFFFF", fontSize: 24, lineHeight: 27, fontWeight: "900", marginTop: 1 },
   search: {
     height: 56,
     borderRadius: 19,
@@ -2018,6 +2079,8 @@ const s = StyleSheet.create({
   coachApproachIcon: { width: 44, height: 44, borderRadius: 15, alignItems: "center", justifyContent: "center" },
   coachApproachTitle: { fontFamily: systemFont, fontSize: 13, lineHeight: 17, fontWeight: "900" },
   coachApproachCopy: { fontFamily: systemFont, fontSize: 10, lineHeight: 15, marginTop: 3 },
+  bookingNotice: { borderRadius: 16, paddingHorizontal: 13, paddingVertical: 11, flexDirection: "row", alignItems: "center", gap: 8 },
+  bookingNoticeText: { flex: 1, fontFamily: systemFont, fontSize: 11, lineHeight: 16, fontWeight: "700" },
   categoryVideosPage: {
     paddingHorizontal: 20,
     paddingTop: 12,
