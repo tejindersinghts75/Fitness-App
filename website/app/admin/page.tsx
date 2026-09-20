@@ -866,13 +866,13 @@ export default function AdminPortal() {
               <button className="manage" onClick={() => setSelectedMembership(item)}>Edit membership <span>→</span></button></div>
             </article>)}
           </div>
-          <form className="membership-form" onSubmit={createMembership}>
-            <h3>Create membership</h3><div className="form-row"><label>Name<input name="name" required placeholder="e.g. 6-Month Membership" /></label><label>Price (₹)<input name="price" type="number" min="0" required /></label></div>
-            <label>Description<textarea name="description" required /></label><div className="form-row"><label>Duration (days)<input name="duration" type="number" min="1" defaultValue="30" required /></label><label>Trial (days)<input name="trial" type="number" min="0" defaultValue="0" /></label></div>
+          <form className="membership-form admin-form-card" onSubmit={createMembership}>
+            <div className="form-title-row"><div><h3>Create membership</h3><p>Add a new plan and publish it to the mobile app.</p></div><button className="primary" disabled={busy}>{busy ? "Creating…" : "Create membership"}</button></div>
+            <div className="form-row"><label>Name<input name="name" required placeholder="e.g. 6-Month Membership" /></label><label>Price (₹)<input name="price" type="number" min="0" required placeholder="2500" /></label></div>
+            <label>Description<textarea name="description" required placeholder="Short description shown in the mobile app." /></label><div className="form-row"><label>Duration (days)<input name="duration" type="number" min="1" defaultValue="30" required /></label><label>Trial (days)<input name="trial" type="number" min="0" defaultValue="0" /></label></div>
             <div className="form-row"><label>Badge<input name="badge" placeholder="MOST POPULAR" /></label><label>Savings label<input name="savings" placeholder="Save ₹3,500" /></label></div>
             <label>Included features<textarea name="features" required placeholder={'One feature per line\nAll workout programs\nProgress tracking'} /></label>
-            <label className="toggle"><input name="popular" type="checkbox" /><span />Mark as popular</label><label className="toggle"><input name="active" type="checkbox" defaultChecked /><span />Publish in mobile app</label>
-            <button className="primary" disabled={busy}>{busy ? "Creating…" : "Create membership"}</button>
+            <div className="form-toggle-row"><label className="toggle"><input name="popular" type="checkbox" /><span />Mark as popular</label><label className="toggle"><input name="active" type="checkbox" defaultChecked /><span />Publish in mobile app</label></div>
           </form>
         </section>}
         {selectedMembership && <div className="modal-backdrop" role="presentation">
@@ -972,8 +972,8 @@ export default function AdminPortal() {
                 {busy ? "Syncing…" : "Sync Calendly"}
               </button>
             </div>
-            <form className="membership-form" onSubmit={createScheduledCall}>
-              <h3>Book a trainer call</h3>
+            <form className="membership-form admin-form-card compact-admin-form" onSubmit={createScheduledCall}>
+              <div className="form-title-row"><div><h3>Book a trainer call</h3><p>Create a manual call if it was not booked through Calendly.</p></div><button className="primary" disabled={busy}>{busy ? "Scheduling…" : "Schedule call"}</button></div>
               <div className="form-row">
                 <label>User
                   <select name="userId" required defaultValue="">
@@ -997,7 +997,6 @@ export default function AdminPortal() {
                 <label>Date and time<input name="startsAt" type="datetime-local" required /></label>
               </div>
               <label>Meeting link<input name="meetingUrl" type="url" placeholder="https://meet.google.com/... or https://zoom.us/..." /></label>
-              <button className="primary" disabled={busy}>{busy ? "Scheduling…" : "Schedule call"}</button>
             </form>
             <div className="admin-table">
               {scheduledCalls.map((call) => {

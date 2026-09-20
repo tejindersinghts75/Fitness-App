@@ -49,8 +49,8 @@ export const PlanCard = ({ plan, onDetails, onChoose }: { plan: MembershipPlan; 
       {plan.popular && <View pointerEvents="none" style={[s.planGlow, { backgroundColor: theme.accent }]} />}
 
       <View style={s.planTopRow}>
-        <View style={[s.planIcon, { backgroundColor: plan.popular ? theme.accent : theme.accent + '16' }]}> 
-          <Ionicons name={plan.popular ? 'diamond' : 'flash'} size={20} color={plan.popular ? '#FFFFFF' : theme.accent}/>
+        <View style={[s.planIcon, { backgroundColor: plan.popular ? theme.accent : theme.accent + '16' }]}>
+          <Ionicons name={plan.popular ? 'diamond' : 'flash'} size={17} color={plan.popular ? '#FFFFFF' : theme.accent}/>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[s.planEyebrow, { color: plan.popular ? theme.accent : theme.muted }]}>{months === 1 ? 'FLEXIBLE START' : 'BEST VALUE'}</Text>
@@ -82,25 +82,22 @@ export const PlanCard = ({ plan, onDetails, onChoose }: { plan: MembershipPlan; 
         </View>
       )}
 
-      <View style={[s.benefitsPanel, { backgroundColor: plan.popular ? 'rgba(255,255,255,.055)' : theme.surfaceAlt }]}> 
-        {plan.features.slice(0, 4).map(x => (
-          <View key={x} style={s.benefit}>
-            <View style={[s.benefitCheck, { backgroundColor: plan.popular ? 'rgba(243,107,33,.2)' : theme.accent + '14' }]}> 
-              <Ionicons name="checkmark" size={13} color={theme.accent}/>
-            </View>
-            <Text style={[s.benefitText, { color: secondary }]}>{x}</Text>
-          </View>
-        ))}
+      <View style={[s.compactSummary, { borderColor: plan.popular ? 'rgba(255,255,255,.12)' : theme.border }]}>
+        <Ionicons name="checkmark-circle" size={16} color={theme.accent}/>
+        <Text numberOfLines={1} style={[s.compactSummaryText, { color: secondary }]}>
+          All programs · Meal plans · Tracking
+        </Text>
       </View>
 
-      <Pressable onPress={onChoose} style={({pressed}) => [s.planCta, { backgroundColor: theme.accent, opacity: pressed ? .78 : 1 }]}> 
-        <Text style={s.planCtaText}>{plan.popular ? 'Get the best value' : 'Choose membership'}</Text>
-        <View style={s.planCtaArrow}><Ionicons name="arrow-forward" size={16} color="#FFFFFF"/></View>
-      </Pressable>
-      <Pressable onPress={onDetails} hitSlop={8} style={({pressed}) => [s.planDetails, { opacity: pressed ? .55 : 1 }]}> 
-        <Text style={[s.planDetailsText, { color: secondary }]}>View everything included</Text>
-        <Ionicons name="chevron-forward" size={14} color={secondary}/>
-      </Pressable>
+      <View style={s.planActions}>
+        <Pressable onPress={onChoose} style={({pressed}) => [s.buyButton, { backgroundColor: theme.accent, opacity: pressed ? .78 : 1 }]}>
+          <Text style={s.buyButtonText}>Buy</Text>
+          <Ionicons name="arrow-forward" size={15} color="#FFFFFF"/>
+        </Pressable>
+        <Pressable onPress={onDetails} style={({pressed}) => [s.detailsButton, { borderColor: plan.popular ? 'rgba(255,255,255,.18)' : theme.border, backgroundColor: plan.popular ? 'rgba(255,255,255,.07)' : theme.surfaceAlt, opacity: pressed ? .65 : 1 }]}>
+          <Text style={[s.detailsButtonText, { color: foreground }]}>Details</Text>
+        </Pressable>
+      </View>
     </View>
   );
 };
@@ -128,23 +125,23 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 28, fontWeight: '900', letterSpacing: -.7 },
   iconButton: { width: 43, height: 43, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  planCard: { position: 'relative', overflow: 'hidden', borderRadius: 27, borderWidth: 1.5, padding: 20, shadowColor: '#171714', shadowOpacity: .12, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 5 },
-  planGlow: { position: 'absolute', width: 180, height: 180, borderRadius: 90, right: -100, top: -110, opacity: .28 },
-  planTopRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  planIcon: { width: 45, height: 45, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  planCard: { position: 'relative', overflow: 'hidden', borderRadius: 23, borderWidth: 1.3, padding: 15, shadowColor: '#171714', shadowOpacity: .09, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+  planGlow: { position: 'absolute', width: 170, height: 170, borderRadius: 85, right: -105, top: -120, opacity: .24 },
+  planTopRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  planIcon: { width: 37, height: 37, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   planEyebrow: { fontSize: 8, lineHeight: 11, fontWeight: '900', letterSpacing: 1.1, marginBottom: 2 },
-  planName: { fontSize: 20, lineHeight: 24, fontWeight: '900', letterSpacing: -.45 },
-  popular: { maxWidth: 104, minHeight: 27, paddingHorizontal: 9, borderRadius: 99, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  planName: { fontSize: 18, lineHeight: 21, fontWeight: '900', letterSpacing: -.35 },
+  popular: { maxWidth: 100, minHeight: 25, paddingHorizontal: 8, borderRadius: 99, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   popularText: { flexShrink: 1, fontSize: 8, lineHeight: 10, fontWeight: '900', letterSpacing: .25, textAlign: 'center' },
-  priceBlock: { marginTop: 22 },
+  priceBlock: { marginTop: 12 },
   priceRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  currency: { fontSize: 20, lineHeight: 27, fontWeight: '900', marginTop: 5, marginRight: 2 },
-  price: { fontSize: 42, lineHeight: 47, fontWeight: '900', letterSpacing: -1.6 },
+  currency: { fontSize: 16, lineHeight: 22, fontWeight: '900', marginTop: 4, marginRight: 2 },
+  price: { fontSize: 32, lineHeight: 36, fontWeight: '900', letterSpacing: -1.25 },
   priceMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 1 },
   pricePeriod: { fontSize: 11, fontWeight: '700' },
   monthlyEquivalent: { fontSize: 11, fontWeight: '900' },
-  savingsPill: { alignSelf: 'flex-start', minHeight: 31, borderRadius: 99, paddingHorizontal: 11, marginTop: 13, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  savingsText: { fontSize: 11, fontWeight: '900' },
+  savingsPill: { position: 'absolute', right: 15, bottom: 15, minHeight: 27, borderRadius: 99, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  savingsText: { fontSize: 10, fontWeight: '900' },
   benefitsPanel: { borderRadius: 19, padding: 14, gap: 10, marginTop: 17 },
   benefit: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   benefitCheck: { width: 23, height: 23, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
@@ -154,6 +151,13 @@ const s = StyleSheet.create({
   planCtaArrow: { width: 29, height: 29, borderRadius: 10, backgroundColor: 'rgba(255,255,255,.18)', alignItems: 'center', justifyContent: 'center' },
   planDetails: { minHeight: 37, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, marginTop: 5 },
   planDetailsText: { fontSize: 11, fontWeight: '700' },
+  compactSummary: { height: 34, borderWidth: 1, borderRadius: 13, paddingHorizontal: 10, marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  compactSummaryText: { flex: 1, fontSize: 11, fontWeight: '700' },
+  planActions: { flexDirection: 'row', gap: 9, marginTop: 11, paddingRight: 104 },
+  buyButton: { height: 40, borderRadius: 14, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1 },
+  buyButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
+  detailsButton: { height: 40, minWidth: 86, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
+  detailsButtonText: { fontSize: 13, fontWeight: '900' },
   contentCard: { width: '48%', borderRadius: 21, borderWidth: 1, overflow: 'hidden', shadowColor: '#171714', shadowOpacity: .08, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
   thumb: { height: 116, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   playBubble: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(0,0,0,.24)', alignItems: 'center', justifyContent: 'center' },
