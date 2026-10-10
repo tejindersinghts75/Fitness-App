@@ -32,6 +32,13 @@
         }
       ],
       "expo-video",
+      [
+        "expo-notifications",
+        {
+          "color": "#F36B21",
+          "defaultChannel": "fitora-updates"
+        }
+      ],
       "expo-status-bar",
       "expo-web-browser"
     ],

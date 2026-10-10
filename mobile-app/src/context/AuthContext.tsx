@@ -3,6 +3,7 @@ import * as Linking from 'expo-linking';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { authService, OtpMode, SignUpInput } from '../services/authService';
+import { notificationService } from '../services/notificationService';
 import { profileService } from '../services/profileService';
 import { Profile, ProfileUpdate } from '../types/profile';
 
@@ -59,6 +60,15 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
       listener.subscription.unsubscribe();
     };
   }, [loadProfile]);
+
+  useEffect(() => {
+    notificationService.prepareAndroidChannel().catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!session?.user?.id || !isSupabaseConfigured) return;
+    notificationService.registerForPushNotifications(session.user.id).catch(() => undefined);
+  }, [session?.user?.id]);
 
   const value = useMemo<AuthContextValue>(() => ({
     user: session?.user ?? null, session, profile, loading, configured: isSupabaseConfigured,

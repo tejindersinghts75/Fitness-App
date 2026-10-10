@@ -10,6 +10,7 @@ import React, {
 import { AppState } from "react-native";
 import { supabase } from "../lib/supabase";
 import { contentService } from "../services/contentService";
+import { notificationService } from "../services/notificationService";
 import { Coach, MembershipPlan, MembershipSubscription, Plan, ScheduledCall, UserSubscription, Video } from "../types";
 import { useAuth } from "./AuthContext";
 
@@ -125,6 +126,11 @@ export const CatalogProvider = ({ children }: React.PropsWithChildren) => {
       supabase.removeChannel(channel);
     };
   }, [refresh, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    notificationService.syncCoachCallReminders(scheduledCalls).catch(() => undefined);
+  }, [scheduledCalls, user]);
 
   useEffect(() => {
     const expirations = [...subscriptions, ...membershipSubscriptions]

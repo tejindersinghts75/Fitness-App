@@ -45,6 +45,12 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['scheduled_calls']['Insert']>;
         Relationships: [];
       };
+      push_tokens: {
+        Row: { id: string; user_id: string; expo_push_token: string; device_id: string | null; platform: 'ios' | 'android' | 'web' | 'unknown'; app_version: string | null; enabled: boolean; last_registered_at: string; created_at: string; updated_at: string };
+        Insert: { id?: string; user_id: string; expo_push_token: string; device_id?: string | null; platform?: 'ios' | 'android' | 'web' | 'unknown'; app_version?: string | null; enabled?: boolean; last_registered_at?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database['public']['Tables']['push_tokens']['Insert']>;
+        Relationships: [];
+      };
       user_subscriptions: {
         Row: { id: string; user_id: string; package_id: string; status: 'active' | 'expired' | 'cancelled'; starts_at: string; expires_at: string; payment_provider: string; payment_reference: string | null; created_at: string; updated_at: string };
         Insert: { id?: string; user_id: string; package_id: string; status?: 'active' | 'expired' | 'cancelled'; starts_at?: string; expires_at: string; payment_provider?: string; payment_reference?: string | null; created_at?: string; updated_at?: string };

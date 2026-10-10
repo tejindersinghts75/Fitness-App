@@ -1080,18 +1080,22 @@ const SubscriptionPrompt = ({ onPress }: { onPress: () => void }) => {
         <Ionicons name="barbell" size={31} color="#FFFFFF" />
       </View>
     </View>
-    <Text style={[s.progressEmptyTitle, { color: theme.text }]}>Start your fitness journey</Text>
-    <Text style={[s.progressEmptyCopy, { color: theme.muted }]}>Choose a membership to unlock guided workouts. Your completed sessions and video progress will appear here automatically.</Text>
+    <View style={[s.freePlanBadge, { backgroundColor: "#FFFFFF" }]}>
+      <Ionicons name="lock-open" size={14} color={theme.accent} />
+      <Text style={[s.freePlanBadgeText, { color: theme.accent }]}>FREE PLAN</Text>
+    </View>
+    <Text style={[s.progressEmptyTitle, { color: theme.text }]}>You don’t have an active membership</Text>
+    <Text style={[s.progressEmptyCopy, { color: theme.muted }]}>You are currently using Fitora on the free plan. Upgrade your membership to unlock premium workouts, meal guidance and progress tracking.</Text>
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [s.progressEmptyCta, { backgroundColor: theme.accent, opacity: pressed ? .8 : 1 }]}
     >
-      <Text style={s.progressEmptyCtaText}>Explore memberships</Text>
+      <Text style={s.progressEmptyCtaText}>Upgrade membership</Text>
       <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
     </Pressable>
     <View style={s.progressEmptyTrustRow}>
       <Ionicons name="checkmark-circle" size={15} color={theme.accent} />
-      <Text style={[s.progressEmptyTrustText, { color: theme.muted }]}>One membership unlocks every included program</Text>
+      <Text style={[s.progressEmptyTrustText, { color: theme.muted }]}>Premium gives access to every included program</Text>
     </View>
   </View>;
 };
@@ -1936,6 +1940,23 @@ const s = StyleSheet.create({
     shadowOpacity: .22,
     shadowRadius: 10,
     elevation: 5,
+  },
+  freePlanBadge: {
+    minHeight: 29,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  freePlanBadgeText: {
+    fontFamily: systemFont,
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: "900",
+    letterSpacing: 1.1,
   },
   progressEmptyTitle: {
     fontFamily: systemFont,
