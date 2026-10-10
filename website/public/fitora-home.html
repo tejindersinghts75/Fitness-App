@@ -1,4 +1,65 @@
-<html lang="en" data-redirect-timezone="1" class="lenis"><head><style id="fitora-scroll-fix">html,body{height:auto!important;min-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:auto!important;touch-action:auto!important}body{position:relative!important}#main{height:auto!important;min-height:100vh!important;overflow:visible!important}.lenis,.lenis body,.lenis.lenis-smooth{height:auto!important;overflow-y:auto!important;scroll-behavior:auto!important}.lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:auto!important}#__framer-editorbar,#template-overlay{pointer-events:none!important}</style>
+<html lang="en" data-redirect-timezone="1" class="lenis"><head><style id="fitora-scroll-fix">html,body{height:auto!important;min-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:auto!important;touch-action:auto!important}body{position:relative!important}#main{height:auto!important;min-height:100vh!important;overflow:visible!important}.lenis,.lenis body,.lenis.lenis-smooth{height:auto!important;overflow-y:auto!important;scroll-behavior:auto!important}.lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:auto!important}#__framer-editorbar,#template-overlay{pointer-events:none!important}</style><script id="fitora-wheel-scroll-fix">
+      (() => {
+        const scrollTarget = () => document.scrollingElement || document.documentElement || document.body;
+
+        window.__fitoraWheelScrollFix = true;
+        document.documentElement.classList.remove("lenis", "lenis-smooth", "lenis-stopped", "lenis-scrolling");
+
+        const unlock = () => {
+          document.documentElement.style.overflowY = "auto";
+          document.documentElement.style.height = "auto";
+          if (document.body) {
+            document.body.style.overflowY = "auto";
+            document.body.style.height = "auto";
+            document.body.style.position = "relative";
+          }
+        };
+
+        const onWheel = (event) => {
+          if (event.ctrlKey || event.metaKey) return;
+          const target = scrollTarget();
+          if (!target) return;
+
+          const before = target.scrollTop;
+          const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+          target.scrollTop = before + delta;
+
+          if (target.scrollTop !== before) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        };
+
+        let touchY = 0;
+        const onTouchStart = (event) => {
+          touchY = event.touches?.[0]?.clientY || 0;
+        };
+        const onTouchMove = (event) => {
+          const nextY = event.touches?.[0]?.clientY || touchY;
+          const target = scrollTarget();
+          if (!target) return;
+
+          const before = target.scrollTop;
+          target.scrollTop = before + (touchY - nextY);
+          touchY = nextY;
+
+          if (target.scrollTop !== before) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        };
+
+        unlock();
+        window.addEventListener("load", unlock, true);
+        window.addEventListener("resize", unlock, true);
+        window.addEventListener("wheel", onWheel, { capture: true, passive: false });
+        document.addEventListener("wheel", onWheel, { capture: true, passive: false });
+        window.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
+        window.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
+        document.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
+        document.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
+      })();
+    </script>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width">
 	<meta name="generator" content="Framer b4b3e20">
@@ -236,68 +297,9 @@
 <svg viewBox="0 0 24 24" id="svg-1241953022_113"><path d="M4 0h16v8h-8zm0 8h8l8 8H4zm0 8h8v8z"></path></svg>
 </div>
 	<!-- Start of bodyEnd -->
-    <script id="fitora-wheel-scroll-fix">
-      (() => {
-        const scrollTarget = () => document.scrollingElement || document.documentElement || document.body;
-
-        window.__fitoraWheelScrollFix = true;
-        document.documentElement.classList.remove("lenis", "lenis-smooth", "lenis-stopped", "lenis-scrolling");
-
-        const unlock = () => {
-          document.documentElement.style.overflowY = "auto";
-          document.documentElement.style.height = "auto";
-          document.body.style.overflowY = "auto";
-          document.body.style.height = "auto";
-          document.body.style.position = "relative";
-        };
-
-        const onWheel = (event) => {
-          if (event.ctrlKey || event.metaKey) return;
-          const target = scrollTarget();
-          if (!target) return;
-
-          const before = target.scrollTop;
-          const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
-          target.scrollTop = before + delta;
-
-          if (target.scrollTop !== before) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-          }
-        };
-
-        let touchY = 0;
-        const onTouchStart = (event) => {
-          touchY = event.touches?.[0]?.clientY || 0;
-        };
-        const onTouchMove = (event) => {
-          const nextY = event.touches?.[0]?.clientY || touchY;
-          const target = scrollTarget();
-          if (!target) return;
-
-          const before = target.scrollTop;
-          target.scrollTop = before + (touchY - nextY);
-          touchY = nextY;
-
-          if (target.scrollTop !== before) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-          }
-        };
-
-        unlock();
-        window.addEventListener("load", unlock, true);
-        window.addEventListener("resize", unlock, true);
-        window.addEventListener("wheel", onWheel, { capture: true, passive: false });
-        document.addEventListener("wheel", onWheel, { capture: true, passive: false });
-        window.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
-        window.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
-        document.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
-        document.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
-      })();
-    </script>
+    
     
     <!-- End of bodyEnd -->
 
 
-<iframe id="__framer-editorbar" src="https://framer.com/edit?framerSiteId=8ec3f9acaceaadb61a0ed138c48a47980d04583134b173c63626f7208e36a0fd&amp;source=fitflow-template.framer.website&amp;features=%7B%22editorBarDisableFrameAncestorsSecurity%22%3Afalse%2C%22onPageLocalizationSupport%22%3Atrue%2C%22onPageMoveTool%22%3Atrue%2C%22onPageRichTextBlockSelection%22%3Atrue%7D&amp;loadStart=1791605629325" aria-hidden="true" allow="autoplay" tabindex="-1" class="status_hidden"></iframe></body></html>
+</body></html>
